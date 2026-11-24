@@ -1,4 +1,9 @@
-# Bípedos pequeños tipo Microduck — exploración en simulación (MuJoCo)
+# Daruma
+
+Bípedos pequeños tipo Microduck. Como el muñeco japonés que siempre se levanta
+(*nanakorobi yaoki*: "cae siete veces, levántate ocho").
+
+## Bípedos pequeños tipo Microduck — exploración en simulación (MuJoCo)
 
 Exploración de diseño de un bípedo compacto de bajo costo, inspirado en Open Duck Mini v2
 y Microduck. Hay dos variantes con el mismo código de simulación, caminata e IA:
@@ -24,8 +29,6 @@ Videos: [Mini13 caminando](media/mini13_walk.mp4) · [Mini13 girando](media/mini
 [Mini16 caminando](media/mini16_walk.mp4) · [Mini16 girando](media/mini16_turn.mp4) ·
 [Mini16: lo que ve la cámara](media/mini16_camara.mp4)
 
-> Proyecto independiente de Pip-Boy Otto; vive en esta carpeta solo de forma temporal.
-
 ## Nuevo: Mini14 (recomendado)
 
 Diseño desde cero con lo aprendido del Microduck ([LECCIONES.md](LECCIONES.md)):
@@ -41,7 +44,7 @@ y empujones: ~7 cm/s. Sin IA, la caminata de referencia no avanza.
 [Video](media/mini14_ia_plano.mp4) · política exportada: `rl/policies/mini14_flat.onnx`
 
 ```bash
-cd biped/model && python build_mini14.py          # regenera el modelo desde sus medidas
+cd model && python build_mini14.py          # regenera el modelo desde sus medidas
 cd ../rl && python train.py --robot mini14 --terrain flat --steps 2000000 --out runs/mini14_flat
 python evaluate.py --robot mini14 --terrain flat --policy policies/mini14_flat.onnx
 ```
@@ -107,7 +110,6 @@ velocidad pedida < 4.5 rad/s) y resisten fricción 0.5–1.3, +150 g y servos m�
 ## Uso
 
 ```bash
-cd biped
 pip install -r requirements.txt
 cd sim
 python run_demo.py                      # Mini16: simula e imprime resultados
