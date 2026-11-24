@@ -1,61 +1,61 @@
-// Parámetros comunes de Mini16 (mm). Todo el diseño depende de estos valores.
+// Common Mini16 parameters (mm). The whole design depends on these values.
 
-// ---------- Impresión ----------
-CL   = 0.4;   // holgura de ajuste entre piezas (0.3-0.4 según la impresora)
-GAP  = 1.0;   // separación mínima entre piezas que se mueven entre sí
-T    = 3.0;   // brazos y placas estructurales (PETG, 4 perímetros con boquilla 0.4 = 1.6 mm + relleno)
-TF   = 2.0;   // placas fijas apoyadas en la cara del servo: deben ser más finas que lo que
-              // sobresale el disco (2.6 mm) para no rozar el brazo que gira encima
+// ---------- Printing ----------
+CL   = 0.4;   // fit clearance between parts (0.3-0.4 depending on the printer)
+GAP  = 1.0;   // minimum gap between parts that move relative to each other
+T    = 3.0;   // structural arms and plates (PETG, 4 perimeters with a 0.4 nozzle = 1.6 mm + infill)
+TF   = 2.0;   // fixed plates resting on the servo face: they must be thinner than how far
+              // the disc sticks out (2.6 mm) so they do not rub the arm rotating on top
 
-// ---------- Servo Feetech STS3215 (plano oficial Waveshare/Feetech "SCS215") ----------
-S_SHORT  = 10.11;  // del eje al extremo corto
-S_LONG   = 35.11;  // del eje al extremo largo (45.22 total)
-S_W      = 24.72;  // ancho
-S_CASE   = 32.0;   // espesor de la carcasa (entre las caras con discos)
-S_DISC_D = 19.2;   // diámetro de los discos (salida y pasivo)
-S_DISC_Z = 37.25 / 2;  // cara exterior de cada disco desde el plano medio
-S_HORN_R = 7.0;    // radio del círculo de 4 agujeros M2 del disco
-M2_HOLE  = 2.4;    // paso para tornillo M2
-HORN_CENTER = 6.5; // paso para la cabeza del tornillo central M3 del disco
-// Agujeros M2 de la carcasa (en ambas caras), medidos desde el eje a lo largo del cuerpo.
-// Cara de salida: 8.3 y 32.75; cara pasiva: 8.3 y 29.0. Se perforan los tres en ambas caras
-// para que las piezas sirvan en la pierna izquierda y en la derecha (espejo).
+// ---------- Feetech STS3215 servo (official Waveshare/Feetech "SCS215" drawing) ----------
+S_SHORT  = 10.11;  // from the axis to the short end
+S_LONG   = 35.11;  // from the axis to the long end (45.22 total)
+S_W      = 24.72;  // width
+S_CASE   = 32.0;   // case thickness (between the faces with discs)
+S_DISC_D = 19.2;   // diameter of the discs (output and passive)
+S_DISC_Z = 37.25 / 2;  // outer face of each disc from the mid-plane
+S_HORN_R = 7.0;    // radius of the disc's 4 M2 hole circle
+M2_HOLE  = 2.4;    // clearance hole for an M2 screw
+HORN_CENTER = 6.5; // clearance for the head of the disc's central M3 screw
+// M2 case holes (on both faces), measured from the axis along the body.
+// Output face: 8.3 and 32.75; passive face: 8.3 and 29.0. All three are drilled on both faces
+// so the parts work on the left leg and on the right one (mirrored).
 S_CASE_HOLES_X = [8.3, 29.0, 32.75];
 S_CASE_HOLE_Y  = 10.25;
-S_CORNER_R = sqrt(S_SHORT * S_SHORT + (S_W / 2) * (S_W / 2));  // 16.0: esquina del lado corto
+S_CORNER_R = sqrt(S_SHORT * S_SHORT + (S_W / 2) * (S_W / 2));  // 16.0: corner of the short side
 
-// ---------- Pierna: distancias entre ejes (se pasan al modelo de simulación) ----------
-R_CB    = S_CORNER_R + GAP;          // radio interior del travesaño de cada "U"
-ARM_R   = 11.0;                      // radio del extremo redondeado de los brazos (cubre el disco)
-D_YAW_ROLL   = T + R_CB + 5;         // cara del disco del servo yaw -> eje roll
-                                     // (+5 mm: el servo roll, acostado hacia afuera, puede inclinarse ±29°)
-D_ROLL_PITCH = S_W / 2 + 3.5 + S_W / 2;   // eje roll -> eje pitch (servo roll sobre servo pitch)
-D_THIGH = R_CB + T + GAP + S_W / 2;  // eje cadera pitch -> eje rodilla
-// Servo del tobillo pitch en la canilla:
-//   "fwd": acostado hacia adelante -> canilla corta (33 mm); la rodilla llega a ~83°
-//   "up":  parado a lo largo de la canilla -> canilla de 56 mm; la rodilla llega a ~100°
+// ---------- Leg: distances between axes (passed to the simulation model) ----------
+R_CB    = S_CORNER_R + GAP;          // inner radius of the crossbar of each "U"
+ARM_R   = 11.0;                      // radius of the rounded end of the arms (covers the disc)
+D_YAW_ROLL   = T + R_CB + 5;         // yaw servo disc face -> roll axis
+                                     // (+5 mm: the roll servo, lying outwards, can tilt ±29°)
+D_ROLL_PITCH = S_W / 2 + 3.5 + S_W / 2;   // roll axis -> pitch axis (roll servo above the pitch servo)
+D_THIGH = R_CB + T + GAP + S_W / 2;  // hip pitch axis -> knee axis
+// Ankle pitch servo in the shin:
+//   "fwd": lying forwards -> short shin (33 mm); the knee reaches ~83°
+//   "up":  standing along the shin -> 56 mm shin; the knee reaches ~100°
 SHIN_SERVO = "fwd";
 D_SHIN  = SHIN_SERVO == "up" ? R_CB + T + GAP + S_LONG : R_CB + T + GAP + S_W / 2;
-D_ANKLE = D_THIGH;                   // eje tobillo pitch -> eje tobillo roll
-FOOT_CLEAR = 27.5;                   // eje tobillo roll -> cara superior de la plancha del pie
-                                     // (deja inclinar el pie ±29° sin tocar el servo, que sobresale hacia afuera)
-PLATE_T = 3.0;                       // plancha del pie (PETG)
-SOLE_T  = 4.0;                       // suela (TPU 95A)
-D_SOLE  = FOOT_CLEAR + PLATE_T + SOLE_T;   // eje tobillo roll -> suela
+D_ANKLE = D_THIGH;                   // ankle pitch axis -> ankle roll axis
+FOOT_CLEAR = 27.5;                   // ankle roll axis -> top face of the foot plate
+                                     // (lets the foot tilt ±29° without touching the servo, which sticks out outwards)
+PLATE_T = 3.0;                       // foot plate (PETG)
+SOLE_T  = 4.0;                       // sole (TPU 95A)
+D_SOLE  = FOOT_CLEAR + PLATE_T + SOLE_T;   // ankle roll axis -> sole
 
-HIP_Y   = 30.0;                      // separación lateral de cada pierna desde el centro
-FOOT_X0 = -38;  FOOT_X1 = 48;        // largo del pie (8.6 cm), x hacia adelante
-FOOT_HW = 22;                        // medio ancho del pie (4.4 cm)
-ROCKER_R = 6;                        // radio de la suela curva en punta, talón y costados
+HIP_Y   = 30.0;                      // lateral offset of each leg from the center
+FOOT_X0 = -38;  FOOT_X1 = 48;        // foot length (8.6 cm), x forward
+FOOT_HW = 22;                        // half width of the foot (4.4 cm)
+ROCKER_R = 6;                        // radius of the curved sole at the toe, heel and sides
 
-// ---------- Sensores de pisada (microinterruptor tipo SS-10: MEDIR el comprado) ----------
-SW_L = 13.0; SW_W = 6.0; SW_H = 6.5;   // cuerpo
-SW_PIN = 2.0;                          // pernos de montaje (separación SW_PIN_DX)
+// ---------- Foot contact sensors (SS-10 type microswitch: MEASURE the one you buy) ----------
+SW_L = 13.0; SW_W = 6.0; SW_H = 6.5;   // body
+SW_PIN = 2.0;                          // mounting pins (spacing SW_PIN_DX)
 SW_PIN_DX = 6.5;
-SW_X = [FOOT_X1 - 11, FOOT_X0 + 11];   // punta y talón
+SW_X = [FOOT_X1 - 11, FOOT_X0 + 11];   // toe and heel
 
-// ---------- Insertos M3 de latón ----------
-INSERT_D = 4.0;   // agujero para inserto M3 (revisar con el fabricante del inserto)
+// ---------- M3 brass inserts ----------
+INSERT_D = 4.0;   // hole for an M3 insert (check with the insert manufacturer)
 INSERT_L = 5.0;
 INSERT_BOSS = 7.5;
 M3_HOLE = 3.4;

@@ -1,37 +1,37 @@
-// Mini16 - pierna izquierda (la derecha es su espejo: mirror([0,1,0])).
+// Mini16 - left leg (the right one is its mirror image: mirror([0,1,0])).
 //
-// Cadena: torso (servo yaw) -> yaw_link -> roll_link -> thigh -> shin -> ankle_cross -> foot (+ sole)
-// Cada pieza está dibujada en el marco de su articulación de entrada, con la pierna recta:
-//   x = adelante, y = izquierda (hacia afuera), z = arriba.
-// Las piezas que giran sujetan el servo anterior por sus DOS discos (salida y pasivo), en "U";
-// el STS3215 ya trae eje pasivo con rodamiento propio. Los cuerpos de los servos se atornillan
-// (M2) a placas finas apoyadas en sus caras.
+// Chain: torso (yaw servo) -> yaw_link -> roll_link -> thigh -> shin -> ankle_cross -> foot (+ sole)
+// Each part is drawn in the frame of its input joint, with the leg straight:
+//   x = forward, y = left (outwards), z = up.
+// The rotating parts hold the previous servo by its TWO discs (output and passive), in a "U";
+// the STS3215 already comes with a passive shaft with its own bearing. The servo bodies are bolted
+// (M2) to thin plates resting on their faces.
 //
-// Uso:
+// Usage:
 //   openscad -o thigh.stl -D 'PART="thigh"' leg.scad
 //   PART = yaw_link | roll_link | thigh | shin | ankle_cross | foot | sole | assembly
-//   Para el ensamble: -D 'Q=[yaw,roll,pitch,knee,ankle,ankle_roll]' (grados)
+//   For the assembly: -D 'Q=[yaw,roll,pitch,knee,ankle,ankle_roll]' (degrees)
 
 include <lib/params.scad>
 use <lib/sts3215.scad>
 
 PART = "assembly";
-MIRROR = false;               // true: versión para la pierna derecha
-Q = [0, 0, 43, -80, 37, 0];   // postura de pie (rodillas flexionadas)
+MIRROR = false;               // true: version for the right leg
+Q = [0, 0, 43, -80, 37, 0];   // standing pose (knees bent)
 SERVOS = true;
-SERVO_INSET = 0;              // >0 encoge los servos (para revisar choques sin contar los apoyos)
+SERVO_INSET = 0;              // >0 shrinks the servos (to check collisions without counting the contact faces)
 
 PETG = [0.55, 0.82, 0.9];
 TPU  = [0.18, 0.18, 0.2];
 
-// ------------------------------------------------------------------ utilidades
-module arm_y(y0, drop) {       // brazo plano en y, del disco (en el origen) hasta z = -drop
+// ------------------------------------------------------------------ utilities
+module arm_y(y0, drop) {       // flat arm in y, from the disc (at the origin) down to z = -drop
     hull() {
         translate([0, y0, 0]) rotate([-90, 0, 0]) cylinder(r = ARM_R, h = T);
         translate([-ARM_R, y0, -drop]) cube([2 * ARM_R, T, T]);
     }
 }
-module arm_x(x0, drop) {       // brazo plano en x
+module arm_x(x0, drop) {       // flat arm in x
     hull() {
         translate([x0, 0, 0]) rotate([0, 90, 0]) cylinder(r = ARM_R, h = T);
         translate([x0, -ARM_R, -drop]) cube([T, 2 * ARM_R, T]);
@@ -41,10 +41,10 @@ module disc_clear_y(z = 0) { translate([0, 0, z]) rotate([90, 0, 0]) cylinder(r 
 module disc_clear_x(z = 0) { translate([0, 0, z]) rotate([0, 90, 0]) cylinder(r = S_DISC_D / 2 + GAP, h = 2 * S_DISC_Z + 2, center = true); }
 module horn_y() { rotate([90, 0, 0]) horn_holes(h = 2 * S_DISC_Z + 4 * T); }
 module horn_x(z = 0) { translate([0, 0, z]) rotate([0, 90, 0]) horn_holes(h = 2 * S_DISC_Z + 4 * T); }
-Y_ARM = [S_DISC_Z, -S_DISC_Z - T];    // posiciones de los brazos a ambos lados de un servo
+Y_ARM = [S_DISC_Z, -S_DISC_Z - T];    // positions of the arms on both sides of a servo
 
-// ------------------------------------------------------------------ piezas
-// Cadera yaw: placa atornillada al disco del servo yaw (en el torso) + U sobre el servo roll.
+// ------------------------------------------------------------------ parts
+// Hip yaw: plate bolted to the disc of the yaw servo (in the torso) + U over the roll servo.
 module yaw_link() {
     difference() {
         union() {
@@ -59,8 +59,8 @@ module yaw_link() {
     }
 }
 
-// Cadera roll: sostiene el cuerpo del servo roll (arriba, acostado hacia afuera) y el del servo
-// pitch (abajo, acostado hacia adelante).
+// Hip roll: holds the body of the roll servo (top, lying outwards) and that of the pitch
+// servo (bottom, lying forwards).
 module roll_link() {
     zp = -D_ROLL_PITCH;
     ftop = -S_W / 2 - 0.5;
@@ -81,8 +81,8 @@ module roll_link() {
     }
 }
 
-// Muslo: U sobre el servo de cadera pitch + cuna del servo de rodilla (acostado hacia atrás,
-// como la placa del muslo del Microduck).
+// Thigh: U over the hip pitch servo + cradle for the knee servo (lying backwards,
+// like Microduck's thigh plate).
 module thigh() {
     zk = -D_THIGH;
     cb = -R_CB - T;
@@ -99,8 +99,8 @@ module thigh() {
     }
 }
 
-// Canilla: U sobre el servo de rodilla + cuna del servo de tobillo pitch
-// (SHIN_SERVO = "fwd": acostado hacia adelante; "up": parado a lo largo de la canilla).
+// Shin: U over the knee servo + cradle for the ankle pitch servo
+// (SHIN_SERVO = "fwd": lying forwards; "up": standing along the shin).
 module shin() {
     za = -D_SHIN;
     cb = -R_CB - T;
@@ -124,7 +124,7 @@ module shin() {
 }
 function shin_servo_x() = SHIN_SERVO == "up" ? [0, 0, 1] : [1, 0, 0];
 
-// Tobillo: U sobre el servo de tobillo pitch + cuna del servo de tobillo roll (acostado hacia afuera).
+// Ankle: U over the ankle pitch servo + cradle for the ankle roll servo (lying outwards).
 module ankle_cross() {
     zr = -D_ANKLE;
     cb = -R_CB - T;
@@ -142,8 +142,8 @@ module ankle_cross() {
     }
 }
 
-// Pie (PETG): U sobre el servo de tobillo roll + plancha con alojamientos para los sensores
-// de pisada (punta y talón) y 4 torres con insertos M3 para la suela.
+// Foot (PETG): U over the ankle roll servo + plate with pockets for the foot contact
+// sensors (toe and heel) and 4 bosses with M3 inserts for the sole.
 SOLE_SCREWS = [[FOOT_X0 + 8, 14], [FOOT_X0 + 8, -14], [FOOT_X1 - 18, 14], [FOOT_X1 - 18, -14]];
 module rounded_plate(x0, x1, hw, z0, h, r = 5) {
     hull() for (x = [x0 + r, x1 - r]) for (y = [-hw + r, hw - r]) translate([x, y, z0]) cylinder(r = r, h = h);
@@ -158,23 +158,23 @@ module foot() {
                 translate([x0, -ARM_R, pb]) cube([T, 2 * ARM_R, PLATE_T]);
             }
             rounded_plate(FOOT_X0, FOOT_X1, FOOT_HW, pb, PLATE_T);
-            // carcasas de los interruptores
+            // switch housings
             for (x = SW_X) translate([x - SW_L / 2 - T, -SW_W / 2 - T, pt]) cube([SW_L + 2 * T, SW_W + 2 * T, SW_H]);
-            // torres para insertos
+            // bosses for the inserts
             for (p = SOLE_SCREWS) translate([p[0], p[1], pt]) cylinder(d = INSERT_BOSS, h = INSERT_L + 1);
         }
         horn_x(0);
         for (x = SW_X) {
             translate([x - SW_L / 2 - CL / 2, -SW_W / 2 - CL / 2, pt]) cube([SW_L + CL, SW_W + CL, SW_H + 1]);
-            translate([x - 2, -2, pb - 1]) cube([4, 4, PLATE_T + 2]);          // paso de la palanca
-            for (dx = [-SW_PIN_DX / 2, SW_PIN_DX / 2])                             // pernos
+            translate([x - 2, -2, pb - 1]) cube([4, 4, PLATE_T + 2]);          // lever opening
+            for (dx = [-SW_PIN_DX / 2, SW_PIN_DX / 2])                             // pins
                 translate([x + dx, 0, pt + SW_H / 2]) rotate([90, 0, 0]) cylinder(d = SW_PIN + 0.2, h = SW_W + 4 * T, center = true, $fn = 16);
         }
         for (p = SOLE_SCREWS) translate([p[0], p[1], pb - 1]) cylinder(d = INSERT_D, h = PLATE_T + INSERT_L + 2, $fn = 24);
     }
 }
 
-// Suela (TPU 95A): bordes redondeados en punta, talón y costados (suela "rocker").
+// Sole (TPU 95A): rounded edges at the toe, heel and sides ("rocker" sole).
 module sole() {
     pb = -FOOT_CLEAR - PLATE_T;
     difference() {
@@ -186,12 +186,12 @@ module sole() {
         for (x = SW_X) translate([x - 2.5, -2.5, pb - SOLE_T - 1]) cube([5, 5, SOLE_T + 2]);
         for (p = SOLE_SCREWS) {
             translate([p[0], p[1], pb - SOLE_T - 1]) cylinder(d = M3_HOLE, h = SOLE_T + 2, $fn = 20);
-            translate([p[0], p[1], pb - SOLE_T - 1]) cylinder(d = 6.5, h = 1 + 1.5, $fn = 24);   // cabeza
+            translate([p[0], p[1], pb - SOLE_T - 1]) cylinder(d = 6.5, h = 1 + 1.5, $fn = 24);   // screw head
         }
     }
 }
 
-// ------------------------------------------------------------------ ensamble
+// ------------------------------------------------------------------ assembly
 module servo_vis(o, Z, X) {
     servo_frame(o, Z, X) if (SERVO_INSET > 0) shrunk_servo(); else sts3215();
 }
@@ -202,7 +202,7 @@ module shrunk_servo() {
 }
 
 module leg(q = Q) {
-    if (SERVOS) servo_vis([0, 0, S_DISC_Z], [0, 0, -1], [-1, 0, 0]);       // servo yaw (en el torso)
+    if (SERVOS) servo_vis([0, 0, S_DISC_Z], [0, 0, -1], [-1, 0, 0]);       // yaw servo (in the torso)
     rotate([0, 0, q[0]]) {
         color(PETG) yaw_link();
         translate([0, 0, -D_YAW_ROLL]) rotate([q[1], 0, 0]) {

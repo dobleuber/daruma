@@ -1,91 +1,91 @@
-# Mini14: diseño nuevo con lo aprendido del Microduck
+# Mini14: new design with what we learned from Microduck
 
-![Mini14 y Mini16](media/mini14_vs_mini16.png)
+![Mini14 and Mini16](media/mini14_vs_mini16.png)
 
-Diseño desde cero siguiendo [LECCIONES.md](LECCIONES.md): servos chicos, 5 por pierna, cabeza
-pesada como contrapeso y equilibrio a cargo de la IA. El modelo se genera con
-`model/build_mini14.py` (todas las medidas en un solo lugar).
+Designed from scratch following [LESSONS.md](LESSONS.md): small servos, 5 per leg, a heavy
+head as a counterweight and balance handled by RL. The model is generated with
+`model/build_mini14.py` (all dimensions in one place).
 
-| | Microduck | **Mini14** | Mini16 (anterior) |
+| | Microduck | **Mini14** | Mini16 (previous) |
 |---|---|---|---|
-| Servos | 14 XL330 (+ pico) | **14 XL330-M288-T** | 12 STS3215 + 4 SCS0009 |
-| Por pierna | 5 | **5** (sin tobillo roll) | 6 |
-| Cuello/cabeza | 4 | **4** (cuello pitch, cabeza pitch, yaw, roll) | 4 |
-| Altura | ~25 cm | **27.7 cm** | 32 cm |
-| Masa | 737 g (modelo) | **629 g** | 1182 g |
-| Peso en piernas | 35 % | **41 %** | 62 % |
-| Peso en cuello + cabeza | 38 % | **32 %** | 8 % |
-| Cadera pitch sobre el piso | 10 cm | **10 cm** | 12 cm |
+| Servos | 14 XL330 (+ beak) | **14 XL330-M288-T** | 12 STS3215 + 4 SCS0009 |
+| Per leg | 5 | **5** (no ankle roll) | 6 |
+| Neck/head | 4 | **4** (neck pitch, head pitch, yaw, roll) | 4 |
+| Height | ~25 cm | **27.7 cm** | 32 cm |
+| Mass | 737 g (model) | **629 g** | 1182 g |
+| Weight in legs | 35 % | **41 %** | 62 % |
+| Weight in neck + head | 38 % | **32 %** | 8 % |
+| Hip pitch above the floor | 10 cm | **10 cm** | 12 cm |
 
-## Decisiones
+## Decisions
 
-- **Batería en la cabeza** (2x 18650 + BMS 2S, 104 g): le da a la cabeza la masa que el Microduck
-  usa como contrapeso, sin agregar peso muerto. Los cables pasan por el cuello.
-- **Orange Pi Zero 3 en el torso**, de pie contra la espalda, para que el torso quede bajo.
-- **Cámara USB y ToF 8x8 al frente de la cabeza** (como el Microduck): miran a donde mira la cabeza.
-- **4 sensores de pisada** (punta y talón de cada pie), ya están en el modelo.
-- **Pie de 80 x 42 mm** con suela plana de TPU.
+- **Battery in the head** (2x 18650 + 2S BMS, 104 g): gives the head the mass that Microduck
+  uses as a counterweight, without adding dead weight. The cables run through the neck.
+- **Orange Pi Zero 3 in the torso**, standing upright against the back, so the torso stays low.
+- **USB camera and 8x8 ToF on the front of the head** (like Microduck): they look where the head looks.
+- **4 foot contact sensors** (toe and heel of each foot), already in the model.
+- **80 x 42 mm foot** with a flat TPU sole.
 
-## Servos: XL330 a 7.4 V
+## Servos: XL330 at 7.4 V
 
-El modelo usa los parámetros que el proyecto [BAM](https://github.com/Rhoban/bam) midió en un
-XL330 real (`params/xl330/m6.json`): torque máximo ~1.0 N·m a 7.4 V, rigidez con la ganancia de
-fábrica (P = 400) de ~1.2 N·m/rad, freno por fuerza contraelectromotriz y fricción.
+The model uses the parameters that the [BAM](https://github.com/Rhoban/bam) project measured on a
+real XL330 (`params/xl330/m6.json`): maximum torque ~1.0 N·m at 7.4 V, stiffness with the factory
+gain (P = 400) of ~1.2 N·m/rad, back-EMF braking and friction.
 
-Son **blandos**: con el peso del robot, las rodillas ceden ~5°. Por eso una caminata fija no
-alcanza (casi no avanza y no mantiene el rumbo) y el equilibrio lo hace la IA, igual que en el
-Microduck. La caminata de referencia solo da pasos sin caerse, corrigiendo la inclinación con el
-tobillo.
+They are **soft**: under the robot's weight, the knees give way ~5°. That is why a fixed gait is not
+enough (it barely moves forward and does not hold its heading) and balance is handled by RL, just like on
+Microduck. The reference gait only takes steps without falling, correcting the tilt with the
+ankle.
 
-**Ojo con el voltaje:** la hoja de datos del XL330 dice 3.7–6 V, pero el Microduck los alimenta
-directo con 2S (simula 6.5–8.2 V). Es un riesgo conocido: más torque y velocidad a cambio de
-vida útil. La alternativa segura es un regulador de 6 V / 5 A (con menos torque).
+**Watch the voltage:** the XL330 datasheet says 3.7–6 V, but Microduck powers them
+directly from 2S (it simulates 6.5–8.2 V). It is a known risk: more torque and speed in exchange for
+service life. The safe alternative is a 6 V / 5 A regulator (with less torque).
 
-## Componentes
+## Components
 
-| Cant. | Componente | Masa | Precio aprox. | Notas |
+| Qty. | Component | Mass | Approx. price | Notes |
 |---|---|---|---|---|
-| 14 | Dynamixel **XL330-M288-T** | 18 g c/u | ~40 € c/u en Europa (~27 USD en EE. UU.) | 20 x 34 x 26 mm, bus TTL, cables en cadena |
-| 1 | **U2D2** (o circuito semidúplex con 74LVC2G241) | 9 g | ~32 USD | USB ↔ bus Dynamixel |
-| 1 | **Orange Pi Zero 3** | 25 g | ya la tienes | 50 Hz de control sobra |
-| 2 | 18650 alta descarga (Molicel P30B) + soporte + BMS 2S | 104 g | ~25 € | en la cabeza |
-| 1 | UBEC 5 V / 3 A | 10 g | ~4 € | para la Orange Pi |
-| 1 | IMU **BNO055** | 3 g | | en el torso |
-| 1 | ToF **VL53L5CX** | 2 g | 15–25 € | en la cabeza |
-| 1 | Cámara USB compacta | 6 g | 10–20 € | en la cabeza |
-| 4 | Microinterruptores SS-10 | 1 g c/u | ~1 € c/u | punta y talón |
-| — | Condensador 1000 µF, interruptor, XT30, cables | ~20 g | ~10 € | |
+| 14 | Dynamixel **XL330-M288-T** | 18 g each | ~40 € each in Europe (~27 USD in the US) | 20 x 34 x 26 mm, TTL bus, daisy-chained cables |
+| 1 | **U2D2** (or half-duplex circuit with 74LVC2G241) | 9 g | ~32 USD | USB ↔ Dynamixel bus |
+| 1 | **Orange Pi Zero 3** | 25 g | you already have it | 50 Hz control is plenty |
+| 2 | High-drain 18650 (Molicel P30B) + holder + 2S BMS | 104 g | ~25 € | in the head |
+| 1 | UBEC 5 V / 3 A | 10 g | ~4 € | for the Orange Pi |
+| 1 | **BNO055** IMU | 3 g | | in the torso |
+| 1 | **VL53L5CX** ToF | 2 g | 15–25 € | in the head |
+| 1 | Compact USB camera | 6 g | 10–20 € | in the head |
+| 4 | SS-10 microswitches | 1 g each | ~1 € each | toe and heel |
+| — | 1000 µF capacitor, switch, XT30, cables | ~20 g | ~10 € | |
 
-**Total aproximado:** ~650 € en Europa (los servos, ~560 €, son ~85 %). Un STS3215 cuesta
-~25 € en tiendas europeas, así que cada XL330 sale ~60 % más caro. Alternativa en la misma clase:
-Feetech STS3032 (20 g), pero cuesta casi lo mismo (~30–40 €) y tiene menos torque (0.44 N·m a 6 V).
+**Approximate total:** ~650 € in Europe (the servos, ~560 €, are ~85 %). An STS3215 costs
+~25 € in European shops, so each XL330 is ~60 % more expensive. Alternative in the same class:
+Feetech STS3032 (20 g), but it costs almost the same (~30–40 €) and has less torque (0.44 N·m at 6 V).
 
-## Pesos (modelo)
+## Weights (model)
 
-| Grupo | Masa |
+| Group | Mass |
 |---|---|
 | 14 XL330 | 252 g |
-| Batería + soporte + BMS (cabeza) | 104 g |
-| Electrónica del torso | 70 g |
-| Sensores de la cabeza | 8 g |
-| Plástico (torso 45 g, cabeza 30 g, piernas 112 g, cuello 8 g) | 195 g |
+| Battery + holder + BMS (head) | 104 g |
+| Torso electronics | 70 g |
+| Head sensors | 8 g |
+| Plastic (torso 45 g, head 30 g, legs 112 g, neck 8 g) | 195 g |
 | **Total** | **629 g** |
 
-## Resultado con IA
+## Result with RL
 
-Entrenamiento corto (2 M de pasos, 23 min en CPU, piso plano). La IA mueve las 10 articulaciones
-de las piernas y las 4 de la cabeza. Evaluado en 20 pruebas con variaciones aleatorias y empujones:
+Short training run (2 M steps, 23 min on CPU, flat floor). The RL policy moves the 10 leg joints
+and the 4 head joints. Evaluated in 20 trials with random variations and pushes:
 
-| | Caminata de referencia | Con IA |
+| | Reference gait | With RL |
 |---|---|---|
-| Pruebas sin caerse y avanzando ≥ 30 cm | 0 % | **100 %** |
-| Avance medio en 10 s | −1 cm | **72 cm** (~7 cm/s) |
+| Trials without falling and moving forward ≥ 30 cm | 0 % | **100 %** |
+| Mean forward distance in 10 s | −1 cm | **72 cm** (~7 cm/s) |
 
-Video: [media/mini14_ia_plano.mp4](media/mini14_ia_plano.mp4). Política: `rl/policies/mini14_flat.onnx`.
+Video: [media/mini14_rl_flat.mp4](media/mini14_rl_flat.mp4). Policy: `rl/policies/mini14_flat.onnx`.
 
-## Pendiente
+## To do
 
-- Entrenar con rampas, escalones y órdenes de giro (más largo: conviene la PC con NVIDIA).
-- Diseñar las piezas en OpenSCAD con las medidas reales del XL330, como se hizo con Mini16, y
-  volver a generar el modelo desde el CAD.
-- Medir un XL330 real con BAM (o usar sus parámetros publicados) antes de pasar al robot.
+- Train with ramps, steps and turn commands (longer: the PC with the NVIDIA GPU is a better fit).
+- Design the parts in OpenSCAD with the real XL330 dimensions, as was done for Mini16, and
+  regenerate the model from the CAD.
+- Measure a real XL330 with BAM (or use its published parameters) before moving to the robot.

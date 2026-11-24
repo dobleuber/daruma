@@ -1,5 +1,5 @@
 -r requirements.txt
-# Entrenamiento con IA (CPU). Para PyTorch solo-CPU:
+# RL training (CPU). For CPU-only PyTorch:
 #   pip install torch --index-url https://download.pytorch.org/whl/cpu
 torch
 stable-baselines3>=2.3

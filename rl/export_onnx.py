@@ -1,11 +1,11 @@
-"""Exporta la política entrenada a ONNX para correrla en la Raspberry Pi.
+"""Exports the trained policy to ONNX to run it on the Raspberry Pi.
 
-Uso:
+Usage:
   python export_onnx.py runs/mix/policy.zip mini16_policy.onnx
 
-El archivo ONNX recibe la observación (ver env.py) y devuelve las 12 correcciones
-de los motores de pierna en [-1, 1]. En el robot: objetivo = caminata programada
-+ 0.3 rad * corrección, a 50 Hz.
+The ONNX file takes the observation (see env.py) and returns the 12 corrections
+for the leg motors in [-1, 1]. On the robot: target = scripted gait
++ 0.3 rad * correction, at 50 Hz.
 """
 
 import sys
@@ -33,7 +33,7 @@ def main(src, dst):
     torch.onnx.export(actor, dummy, dst, input_names=["obs"], output_names=["action"],
                       dynamic_axes={"obs": {0: "batch"}, "action": {0: "batch"}}, opset_version=17,
                       dynamo=False)
-    # Verificación: ONNX == PyTorch
+    # Check: ONNX == PyTorch
     import onnxruntime as ort
 
     sess = ort.InferenceSession(dst)
@@ -41,7 +41,7 @@ def main(src, dst):
     a_onnx = sess.run(None, {"obs": x})[0]
     a_sb3 = np.stack([model.predict(xi, deterministic=True)[0] for xi in x])
     err = float(np.abs(a_onnx - np.clip(a_sb3, -1, 1)).max())
-    print(f"Exportado a {dst} (diferencia máx. con PyTorch: {err:.2e})")
+    print(f"Exported to {dst} (max. difference from PyTorch: {err:.2e})")
 
 
 if __name__ == "__main__":

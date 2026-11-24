@@ -1,5 +1,5 @@
 #!/bin/sh
-# Exporta todas las piezas de la pierna (izquierda y derecha) a stl/.
+# Exports all the leg parts (left and right) to stl/.
 cd "$(dirname "$0")"
 mkdir -p stl
 for p in yaw_link roll_link thigh shin ankle_cross foot sole; do

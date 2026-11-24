@@ -1,4 +1,4 @@
-// Imprime los parámetros que usa build_mjcf.py (una sola fuente de verdad: lib/params.scad).
+// Prints the parameters used by build_mjcf.py (single source of truth: lib/params.scad).
 include <lib/params.scad>
 echo("S_DISC_Z", S_DISC_Z);
 echo("S_CASE", S_CASE);

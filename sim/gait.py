@@ -1,19 +1,19 @@
-"""Caminata programada (sin IA) con cinemática inversa de las piernas.
+"""Scripted gait (no RL) with inverse kinematics of the legs.
 
-Sirve para Mini13 (5 motores por pierna) y Mini16 (6, con tobillo roll).
+Works for Mini13 (5 motors per leg) and Mini16 (6, with ankle roll).
 
 Idea:
-  1. El cuerpo se balancea de lado a lado (cadera roll) para cargar el peso en un pie.
-     Si hay tobillo roll, compensa para que los pies queden planos.
-  2. El pie libre se levanta (rodilla) y se adelanta (cadera pitch); el de apoyo
-     va hacia atrás, empujando el cuerpo hacia adelante.
-  3. El tobillo pitch mantiene los pies paralelos al cuerpo.
-  4. Para girar, da pasos más cortos de un lado y rota la cadera yaw.
-  5. La cabeza compensa la inclinación del cuerpo (como las aves) y mira alrededor.
+  1. The body sways from side to side (hip roll) to load the weight onto one foot.
+     If there is ankle roll, it compensates so the feet stay flat.
+  2. The free foot is lifted (knee) and moved forward (hip pitch); the support foot
+     moves backwards, pushing the body forward.
+  3. The ankle pitch keeps the feet parallel to the body.
+  4. To turn, it takes shorter steps on one side and rotates the hip yaw.
+  5. The head compensates the body's tilt (like birds do) and looks around.
 
-Orden de actuadores (igual que en los XML):
-  pierna izquierda, pierna derecha (hip_yaw, hip_roll, hip_pitch, knee, ankle[, ankle_roll]),
-  luego cabeza (neck_pitch, head_pitch, head_yaw[, head_roll]).
+Actuator order (same as in the XMLs):
+  left leg, right leg (hip_yaw, hip_roll, hip_pitch, knee, ankle[, ankle_roll]),
+  then head (neck_pitch, head_pitch, head_yaw[, head_roll]).
 """
 
 from dataclasses import dataclass, fields, replace
@@ -25,25 +25,25 @@ import robots
 
 @dataclass
 class GaitParams:
-    """Los campos en None toman el valor por defecto del robot (robots.py)."""
+    """Fields left as None take the robot's default value (robots.py)."""
 
     robot: str = None  # "mini13" / "mini16" (None = robots.DEFAULT)
-    freq: float = None  # ciclos por segundo (cada ciclo = un paso con cada pie)
-    step_len: float = None  # m, mitad del recorrido del pie hacia adelante/atrás
-    lift: float = None  # m, altura a la que se levanta el pie
-    sway: float = None  # m, balanceo lateral del cuerpo
-    sway_lead: float = None  # rad, adelanto del balanceo respecto del paso
-    hip_height: float = None  # m, altura de la cadera sobre la suela (rodillas flexionadas)
-    foot_x: float = None  # m, posición del pie respecto de la cadera
-    turn: float = 0.0  # giro (+ = izquierda). Con steer: velocidad de giro pedida en rad/s
-    steer: bool = True  # corrige el rumbo con la IMU (si no, el giro es en lazo abierto)
-    steer_gain: float = None  # ganancia del control de rumbo (por rad de error)
-    steer_damping: float = None  # amortiguación (por rad/s de velocidad de giro, giroscopio)
-    turn_yaw: float = None  # rad de cadera yaw por paso cuando turn = 1
-    stride_bias: float = None  # corrige desvíos al caminar recto (pasos desiguales)
-    balance: float = None  # rad de tobillo pitch por rad de inclinación del torso (IMU); 0 = sin corrección
-    ramp_time: float = 1.5  # s, arranque suave
-    head: bool = True  # animar cabeza
+    freq: float = None  # cycles per second (each cycle = one step with each foot)
+    step_len: float = None  # m, half of the foot's forward/backward travel
+    lift: float = None  # m, height the foot is lifted to
+    sway: float = None  # m, lateral sway of the body
+    sway_lead: float = None  # rad, phase lead of the sway relative to the step
+    hip_height: float = None  # m, hip height above the sole (knees bent)
+    foot_x: float = None  # m, foot position relative to the hip
+    turn: float = 0.0  # turn (+ = left). With steer: requested turn rate in rad/s
+    steer: bool = True  # corrects the heading with the IMU (otherwise the turn is open loop)
+    steer_gain: float = None  # heading control gain (per rad of error)
+    steer_damping: float = None  # damping (per rad/s of turn rate, gyroscope)
+    turn_yaw: float = None  # rad of hip yaw per step when turn = 1
+    stride_bias: float = None  # corrects drift when walking straight (unequal steps)
+    balance: float = None  # rad of ankle pitch per rad of torso tilt (IMU); 0 = no correction
+    ramp_time: float = 1.5  # s, soft start
+    head: bool = True  # animate the head
 
     def __post_init__(self):
         rb = robots.get(self.robot)
@@ -58,17 +58,17 @@ class GaitParams:
 
 
 def leg_ik(x: float, y: float, z: float, robot=None) -> np.ndarray:
-    """Ángulos (hip_roll, hip_pitch, knee, ankle) para llevar el tobillo a (x, y, z).
+    """Angles (hip_roll, hip_pitch, knee, ankle) that bring the ankle to (x, y, z).
 
-    (x, y, z) se mide desde el eje de cadera pitch con roll = 0, en el marco del torso.
-    La rodilla se dobla hacia atrás (como el Microduck) y el tobillo se elige para
-    que el pie quede paralelo al torso en pitch.
+    (x, y, z) is measured from the hip pitch axis with roll = 0, in the torso frame.
+    The knee bends backwards (like Microduck's) and the ankle is chosen so that
+    the foot stays parallel to the torso in pitch.
     """
     rb = robots.get(robot)
     L1, L2, rp = rb.thigh, rb.shin, rb.roll_to_pitch
-    pz = z - rp  # relativo al eje roll
+    pz = z - rp  # relative to the roll axis
     roll = np.arctan2(y, -pz)
-    h = np.hypot(y, pz) - rp  # distancia hacia abajo en el plano de la pierna
+    h = np.hypot(y, pz) - rp  # downward distance in the plane of the leg
     r = min(np.hypot(x, h), L1 + L2 - 1e-4)
     cos_knee = (L1**2 + L2**2 - r**2) / (2 * L1 * L2)
     knee = -(np.pi - np.arccos(np.clip(cos_knee, -1, 1)))
@@ -80,24 +80,24 @@ def leg_ik(x: float, y: float, z: float, robot=None) -> np.ndarray:
 
 
 def leg_targets(t: float, p: GaitParams):
-    """Posición del tobillo de cada pie (relativa a su cadera) y yaw de cadera."""
+    """Ankle position of each foot (relative to its hip) and hip yaw."""
     ramp = min(1.0, t / p.ramp_time) if p.ramp_time > 0 else 1.0
     phi = 2 * np.pi * p.freq * t
     z0 = -(p.hip_height - p.rb.ankle_to_sole)
 
-    # Pie izquierdo en el aire cuando sin(phi) > 0, derecho cuando sin(phi) < 0.
-    swing_l = max(0.0, np.sin(phi)) ** 2  # perfil suave (sin golpes)
+    # Left foot in the air when sin(phi) > 0, right foot when sin(phi) < 0.
+    swing_l = max(0.0, np.sin(phi)) ** 2  # smooth profile (no impacts)
     swing_r = max(0.0, -np.sin(phi)) ** 2
-    # Girar: pasos más cortos del lado hacia el que se gira (como un tanque).
-    # Límite ±0.4: más allá los servos no alcanzan la velocidad necesaria.
+    # Turning: shorter steps on the side it turns towards (like a tank).
+    # Limit ±0.4: beyond that the servos cannot reach the required speed.
     k = np.clip(p.turn + p.stride_bias, -0.4, 0.4)
     x_l = p.foot_x - p.step_len * (1 - k) * ramp * np.cos(phi)
     x_r = p.foot_x + p.step_len * (1 + k) * ramp * np.cos(phi)
-    # Balanceo: el cuerpo se mueve hacia el pie de apoyo (los pies se mueven al revés).
+    # Sway: the body moves towards the support foot (the feet move the opposite way).
     sway = p.sway * ramp * np.sin(phi + p.sway_lead)
     z_l = z0 + p.lift * ramp * swing_l
     z_r = z0 + p.lift * ramp * swing_r
-    # Giro: la cadera yaw rota durante el paso, igual que x.
+    # Turn: the hip yaw rotates during the step, just like x.
     yaw_l = -p.turn * p.turn_yaw * ramp * np.cos(phi) / 2
     yaw_r = p.turn * p.turn_yaw * ramp * np.cos(phi) / 2
     return (x_l, sway, z_l, yaw_l), (x_r, sway, z_r, yaw_r)
@@ -107,19 +107,19 @@ def leg_command(yaw, x, y, z, rb) -> list:
     roll, pitch, knee, ankle = leg_ik(x, y, z, rb)
     q = [yaw, roll, pitch, knee, ankle]
     if rb.ankle_roll:
-        q.append(-roll)  # tobillo roll = -cadera roll: pie plano
+        q.append(-roll)  # ankle roll = -hip roll: flat foot
     return q
 
 
 def targets(t: float, p: GaitParams, torso_pitch: float = 0.0, torso_roll: float = 0.0) -> np.ndarray:
-    """Ángulos objetivo de todos los motores en el tiempo t."""
+    """Target angles of all motors at time t."""
     rb = p.rb
     (xl, yl, zl, yawl), (xr, yr, zr, yawr) = leg_targets(t, p)
     q = np.zeros(rb.n_act)
     q[: rb.per_leg] = leg_command(yawl, xl, yl, zl, rb)
     q[rb.per_leg : rb.n_leg] = leg_command(yawr, xr, yr, zr, rb)
     if p.balance:
-        # Equilibrio con el tobillo: si el torso se inclina, los tobillos lo empujan de vuelta.
+        # Ankle balance: if the torso tilts, the ankles push it back.
         ankle = rb.leg_joints.index("ankle")
         q[ankle] += p.balance * torso_pitch
         q[rb.per_leg + ankle] += p.balance * torso_pitch
@@ -129,20 +129,20 @@ def targets(t: float, p: GaitParams, torso_pitch: float = 0.0, torso_roll: float
 
 
 def head_targets(t: float, torso_pitch: float, torso_roll: float, n_head: int = 3) -> np.ndarray:
-    """Cabeza: compensa la inclinación del cuerpo y mira a los lados."""
+    """Head: compensates the body's tilt and looks to the sides."""
     neck_pitch = 0.15 * np.sin(2 * np.pi * 0.3 * t)
-    head_pitch = -torso_pitch - neck_pitch  # mantiene la mirada horizontal
+    head_pitch = -torso_pitch - neck_pitch  # keeps the gaze horizontal
     head_yaw = 0.6 * np.sin(2 * np.pi * 0.15 * t)
-    q = [neck_pitch, head_pitch, head_yaw, -torso_roll]  # cabeza roll compensa el balanceo
+    q = [neck_pitch, head_pitch, head_yaw, -torso_roll]  # head roll compensates the sway
     return np.array(q[:n_head])
 
 
 class Steering:
-    """Control de rumbo con la IMU (el BNO055 da el rumbo absoluto).
+    """Heading control with the IMU (the BNO055 gives the absolute heading).
 
-    Lleva un rumbo de referencia que avanza a la velocidad de giro pedida
-    (params.turn, rad/s) y ajusta el giro de la caminata (pasos desiguales +
-    cadera yaw) para seguirlo. Con turn = 0 mantiene la dirección inicial.
+    Keeps a reference heading that advances at the requested turn rate
+    (params.turn, rad/s) and adjusts the gait's turn (unequal steps +
+    hip yaw) to follow it. With turn = 0 it keeps the initial direction.
     """
 
     MAX_TURN = 0.35
@@ -157,7 +157,7 @@ class Steering:
         p = self.params
         if not p.steer:
             return p
-        if self.prev_yaw is not None:  # velocidad de giro filtrada (en el robot: giroscopio)
+        if self.prev_yaw is not None:  # filtered turn rate (on the robot: gyroscope)
             self.rate += 0.2 * ((yaw_measured - self.prev_yaw) / dt - self.rate)
         self.prev_yaw = yaw_measured
         self.yaw_ref += p.turn * dt

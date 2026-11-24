@@ -1,165 +1,165 @@
 # Daruma
 
-Bípedos pequeños tipo Microduck. Como el muñeco japonés que siempre se levanta
-(*nanakorobi yaoki*: "cae siete veces, levántate ocho").
+Small Microduck-style bipeds. Like the Japanese doll that always gets back up
+(*nanakorobi yaoki*: "fall seven times, stand up eight").
 
-## Bípedos pequeños tipo Microduck — exploración en simulación (MuJoCo)
+## Small Microduck-style bipeds — exploration in simulation (MuJoCo)
 
-Exploración de diseño de un bípedo compacto de bajo costo, inspirado en Open Duck Mini v2
-y Microduck. Hay dos variantes con el mismo código de simulación, caminata e IA:
+Design exploration of a compact, low-cost biped, inspired by Open Duck Mini v2
+and Microduck. There are two variants that share the same simulation, gait and RL code:
 
-| | **Mini13** | **Mini16** (por defecto, recomendado) |
+| | **Mini13** | **Mini16** (default, recommended) |
 |---|---|---|
-| Motores | 13: 5 por pierna + 3 cabeza | 16: 6 por pierna + 4 cabeza |
-| Pierna | cadera yaw/roll/pitch, rodilla, tobillo pitch | ídem + **tobillo roll** |
-| Altura / masa | ~27 cm / 996 g | ~32 cm / 1.18 kg (piezas reales del CAD) |
-| Pie | suela curva de TPU (punta, talón, costados) | plano |
-| Cámara | sí (simulada) | cámara USB al frente de la cabeza |
-| Sensores | IMU, pisada | IMU, 4 de pisada (punta/talón), ToF 8x8 mirando al piso |
-| Velocidad en plano (caminata programada) | ~5 cm/s | ~3.4 cm/s |
-| Rampas (caminata programada) | no | 10° sí, 15° no |
-| Escalones ≥ 1 cm | no (necesita IA) | no (necesita IA) |
+| Motors | 13: 5 per leg + 3 head | 16: 6 per leg + 4 head |
+| Leg | hip yaw/roll/pitch, knee, ankle pitch | same + **ankle roll** |
+| Height / mass | ~27 cm / 996 g | ~32 cm / 1.18 kg (real CAD parts) |
+| Foot | curved TPU sole (toe, heel, sides) | flat |
+| Camera | yes (simulated) | USB camera on the front of the head |
+| Sensors | IMU, foot contact | IMU, 4 foot contact (toe/heel), 8x8 ToF looking at the floor |
+| Speed on flat (scripted gait) | ~5 cm/s | ~3.4 cm/s |
+| Ramps (scripted gait) | no | 10° yes, 15° no |
+| Steps ≥ 1 cm | no (needs RL) | no (needs RL) |
 
 <p>
-<img src="media/mini13_walk.gif" width="45%" alt="Mini13 caminando">
-<img src="media/mini16_walk.gif" width="45%" alt="Mini16 caminando">
+<img src="media/mini13_walk.gif" width="45%" alt="Mini13 walking">
+<img src="media/mini16_walk.gif" width="45%" alt="Mini16 walking">
 </p>
 
-Videos: [Mini13 caminando](media/mini13_walk.mp4) · [Mini13 girando](media/mini13_turn.mp4) ·
-[Mini16 caminando](media/mini16_walk.mp4) · [Mini16 girando](media/mini16_turn.mp4) ·
-[Mini16: lo que ve la cámara](media/mini16_camara.mp4)
+Videos: [Mini13 walking](media/mini13_walk.mp4) · [Mini13 turning](media/mini13_turn.mp4) ·
+[Mini16 walking](media/mini16_walk.mp4) · [Mini16 turning](media/mini16_turn.mp4) ·
+[Mini16: what the camera sees](media/mini16_camera.mp4)
 
-## Nuevo: Mini14 (recomendado)
+## New: Mini14 (recommended)
 
-Diseño desde cero con lo aprendido del Microduck ([LECCIONES.md](LECCIONES.md)):
-14 servos XL330 (5 por pierna + 4 en cuello y cabeza), batería en la cabeza como contrapeso,
-27.7 cm y 629 g. Detalles, componentes y pesos en **[MINI14.md](MINI14.md)**.
+Designed from scratch with what we learned from Microduck ([LESSONS.md](LESSONS.md)):
+14 XL330 servos (5 per leg + 4 in the neck and head), battery in the head as a counterweight,
+27.7 cm and 629 g. Details, components and weights in **[MINI14.md](MINI14.md)**.
 
-Con un entrenamiento corto de IA (2 M de pasos, 23 min en 4 núcleos de CPU, solo piso plano)
-camina en el **100 % de 20 pruebas** con fricción, peso, rigidez de servos y retardo aleatorios
-y empujones: ~7 cm/s. Sin IA, la caminata de referencia no avanza.
+After a short RL training run (2 M steps, 23 min on 4 CPU cores, flat floor only) it
+walks in **100 % of 20 trials** with randomized friction, mass, servo stiffness and delay,
+plus pushes: ~7 cm/s. Without RL, the reference gait does not move forward.
 
-<img src="media/mini14_ia_plano.gif" width="70%" alt="Mini14 caminando con IA">
+<img src="media/mini14_rl_flat.gif" width="70%" alt="Mini14 walking with the RL policy">
 
-[Video](media/mini14_ia_plano.mp4) · política exportada: `rl/policies/mini14_flat.onnx`
+[Video](media/mini14_rl_flat.mp4) · exported policy: `rl/policies/mini14_flat.onnx`
 
 ```bash
-cd model && python build_mini14.py          # regenera el modelo desde sus medidas
+cd model && python build_mini14.py          # regenerates the model from its dimensions
 cd ../rl && python train.py --robot mini14 --terrain flat --steps 2000000 --out runs/mini14_flat
 python evaluate.py --robot mini14 --terrain flat --policy policies/mini14_flat.onnx
 ```
 
-## Piezas imprimibles (CAD)
+## Printable parts (CAD)
 
-La pierna de Mini16 ya está diseñada en OpenSCAD con las medidas reales del STS3215:
-**[cad/README.md](cad/README.md)** (piezas, materiales, tornillería, rangos sin choques).
-El modelo de simulación `model/mini16.xml` se **genera** desde el CAD (`cad/build_mjcf.py`),
-así que usa las mismas distancias, mallas y masas que las piezas a imprimir.
+The Mini16 leg is already designed in OpenSCAD with the real STS3215 dimensions:
+**[cad/README.md](cad/README.md)** (parts, materials, fasteners, collision-free ranges).
+The simulation model `model/mini16.xml` is **generated** from the CAD (`cad/build_mjcf.py`),
+so it uses the same distances, meshes and masses as the parts to be printed.
 
-![Mini16 desde el CAD](media/mini16_cad.png)
+![Mini16 from the CAD](media/mini16_cad.png)
 
-**Lo que cambió al usar las piezas reales:** el robot pasó de ~24 cm / 1.10 kg (modelo
-idealizado) a ~32 cm / 1.18 kg, y la caminata programada quedó bastante más frágil (sube rampas
-de 10°, ya no de 15°). Para terreno irregular, la IA vuelve a ser necesaria.
+**What changed when using the real parts:** the robot went from ~24 cm / 1.10 kg (idealized
+model) to ~32 cm / 1.18 kg, and the scripted gait became considerably more fragile (it climbs
+10° ramps, no longer 15°). For uneven terrain, RL is necessary again.
 
-## Conclusiones de la exploración
+## Conclusions of the exploration
 
-- **Piernas cortas y rodilla hacia atrás** caminan mucho más estable que piernas largas o rectas.
-- **Sin tobillo roll (5 motores por pierna, como Open Duck):** al cargar el peso en una pierna el
-  pie se inclina, así que la caminata programada solo puede levantar el pie ~1 cm. Camina bien en
-  plano, pero cualquier borde (rampa o escalón de 3–5 mm) lo desestabiliza. Para terreno irregular
-  depende de entrenamiento con IA, que es justo lo que hacen Open Duck y Microduck.
-- **Con tobillo roll (6 por pierna):** levanta el pie 2 cm y sube rampas de 10–15° sin IA. Cuesta
-  2 servos y ~100 g más.
-- **Cintura roll** en vez de tobillo: ayuda poco (solo ~30 % del peso está arriba de ella).
-- **Escalones de 1 cm o más:** ninguna caminata fija los pasa; hay que reaccionar al borde (IA +
-  sensor de distancia mirando al piso).
-- **Control de rumbo con la IMU** (BNO055): necesario en Mini13, cuyo rumbo en lazo abierto es
-  caótico. Con él camina recto (balanceo de ±15–20°) y gira a la velocidad pedida.
-- **IA:** el entorno de entrenamiento funciona de punta a punta (incluida la exportación a ONNX),
-  pero los entrenamientos cortos (0.5 M pasos, ~8 min en CPU) apenas mejoran: un resultado real
-  requiere entrenar mucho más, idealmente en GPU.
+- **Short legs with the knee bending backwards** walk much more stably than long or straight legs.
+- **Without ankle roll (5 motors per leg, like Open Duck):** when the weight shifts onto one leg the
+  foot tilts, so the scripted gait can only lift the foot ~1 cm. It walks well on
+  flat ground, but any edge (a ramp or a 3–5 mm step) destabilizes it. Uneven terrain
+  depends on RL training, which is exactly what Open Duck and Microduck do.
+- **With ankle roll (6 per leg):** it lifts the foot 2 cm and climbs 10–15° ramps without RL. It costs
+  2 servos and ~100 g more.
+- **Waist roll** instead of ankle roll: helps little (only ~30 % of the weight is above it).
+- **Steps of 1 cm or more:** no fixed gait gets over them; the robot has to react to the edge (RL +
+  a distance sensor looking at the floor).
+- **Heading control with the IMU** (BNO055): necessary on Mini13, whose open-loop heading is
+  chaotic. With it, it walks straight (±15–20° sway) and turns at the requested rate.
+- **RL:** the training environment works end to end (including ONNX export),
+  but short training runs (0.5 M steps, ~8 min on CPU) barely improve: a real result
+  requires much longer training, ideally on a GPU.
 
-Todas las pruebas respetan los límites del STS3215 (torque percentil 99 < 1.3 N·m de 1.9 N·m,
-velocidad pedida < 4.5 rad/s) y resisten fricción 0.5–1.3, +150 g y servos más blandos o rígidos.
+All tests respect the STS3215 limits (99th-percentile torque < 1.3 N·m out of 1.9 N·m,
+commanded speed < 4.5 rad/s) and tolerate friction 0.5–1.3, +150 g and softer or stiffer servos.
 
-## Diseño de Mini13 (según la especificación del proyecto)
+## Mini13 design (per the project specification)
 
 ```
           ┌───────────┐
-          │  cabeza ◉ │  cámara; cuello pitch + cabeza pitch + cabeza yaw
+          │  head   ◉ │  camera; neck pitch + head pitch + head yaw
           └─────┬─────┘
             ┌───┸───┐
-            │ torso │     batería 2S abajo, placa, IMU cerca del centro de masa
+            │ torso │     2S battery at the bottom, board, IMU near the center of mass
             └┬─────┬┘
-     cadera  ●     ●      yaw + roll + pitch
-            ╱       ╲     muslo 5.5 cm
-     rodilla●       ●     hacia atrás, rango ~130°
-             ╲     ╱      canilla 6 cm
-     tobillo  ●   ●       pitch
-            ◖▬▬▬◗ ◖▬▬▬◗   pie 8.6 x 5 cm, suela curva TPU, sensor de contacto
+      hip    ●     ●      yaw + roll + pitch
+            ╱       ╲     thigh 5.5 cm
+      knee  ●       ●     bends backwards, range ~130°
+             ╲     ╱      shin 6 cm
+      ankle   ●   ●       pitch
+            ◖▬▬▬◗ ◖▬▬▬◗   foot 8.6 x 5 cm, curved TPU sole, contact sensor
 ```
 
-- Árbol de cuerpos `torso → hip_yaw_link → hip_roll_link → thigh → shin → foot`, con el origen de
-  cada cuerpo en el eje real del servo (compatible con onshape-to-robot).
-- Cada servo está modelado como pieza aparte con su masa real (55 g), no por densidad.
-- Pendiente para la etapa de CAD: soportes de doble eje con rodamiento (683/MR105), insertos M3,
-  paredes de 2 mm, holguras 0.3–0.4 mm, pasacables para el rango completo de la rodilla y
-  rodamiento de empuje en la cadera yaw.
+- Body tree `torso → hip_yaw_link → hip_roll_link → thigh → shin → foot`, with the origin of
+  each body on the real servo axis (compatible with onshape-to-robot).
+- Each servo is modeled as a separate part with its real mass (55 g), not by density.
+- Pending for the CAD stage: dual-axis brackets with bearings (683/MR105), M3 inserts,
+  2 mm walls, 0.3–0.4 mm clearances, cable pass-throughs for the full knee range and
+  a thrust bearing in the hip yaw.
 
-## Uso
+## Usage
 
 ```bash
 pip install -r requirements.txt
 cd sim
-python run_demo.py                      # Mini16: simula e imprime resultados
-python run_demo.py --robot mini13       # Mini13 (5 motores por pierna)
-python run_demo.py --video robot.mp4    # graba video (en servidor: MUJOCO_GL=osmesa o egl)
-python run_demo.py --viewer             # visor 3D interactivo (requiere pantalla)
-python run_demo.py --turn 0.2           # gira a la izquierda 0.2 rad/s (negativo = derecha)
-python -m pytest -q                     # pruebas
+python run_demo.py                      # Mini16: simulates and prints results
+python run_demo.py --robot mini13       # Mini13 (5 motors per leg)
+python run_demo.py --video robot.mp4    # records a video (on a server: MUJOCO_GL=osmesa or egl)
+python run_demo.py --viewer             # interactive 3D viewer (needs a display)
+python run_demo.py --turn 0.2           # turns left at 0.2 rad/s (negative = right)
+python -m pytest -q                     # tests
 ```
 
-Entrenamiento con IA (opcional; ver `rl/env.py` para observaciones, recompensas y variaciones):
+RL training (optional; see `rl/env.py` for observations, rewards and randomization):
 
 ```bash
 pip install -r requirements-rl.txt
 cd rl
-python train.py --robot mini13 --steps 500000 --out runs/prueba
-python evaluate.py --robot mini13 --policy runs/prueba/policy.zip
-python export_onnx.py runs/prueba/policy.zip policy.onnx
+python train.py --robot mini13 --steps 500000 --out runs/test
+python evaluate.py --robot mini13 --policy runs/test/policy.zip
+python export_onnx.py runs/test/policy.zip policy.onnx
 ```
 
-Archivos:
-- `model/mini13.xml`, `model/mini16.xml` — robots; `model/scene_*.xml` — robot + piso
-- `sim/robots.py` — medidas y parámetros de caminata de cada robot
-- `sim/gait.py` — caminata programada, cinemática inversa y control de rumbo
-- `sim/common.py`, `sim/terrain.py` — simulación, métricas, rampas y escalones
-- `rl/` — entorno Gymnasium, entrenamiento PPO, evaluación y exportación ONNX
+Files:
+- `model/mini13.xml`, `model/mini16.xml` — robots; `model/scene_*.xml` — robot + floor
+- `sim/robots.py` — dimensions and gait parameters of each robot
+- `sim/gait.py` — scripted gait, inverse kinematics and heading control
+- `sim/common.py`, `sim/terrain.py` — simulation, metrics, ramps and steps
+- `rl/` — Gymnasium environment, PPO training, evaluation and ONNX export
 
-## Placa para el robot
+## Board for the robot
 
-La red de la IA es chica (2 capas de 128): cualquier placa la corre a 50 Hz. Elegida para Mini16:
-**Orange Pi Zero 3** con cámara USB (el torso mide 7 x 8 x 6.2 cm).
+The RL network is small (2 layers of 128): any board runs it at 50 Hz. Chosen for Mini16:
+**Orange Pi Zero 3** with a USB camera (the torso measures 7 x 8 x 6.2 cm).
 
-| Placa | ¿Cabe? | Notas |
+| Board | Fits? | Notes |
 |---|---|---|
-| Orange Pi Zero 3 / Zero 2 | sí | sin conector de cámara: usar cámara USB |
-| Raspberry Pi Zero 2W | sí | la más fácil de meter; conector de cámara CSI |
-| Orange Pi 5 Pro | no | potente, pero exige un torso más grande y más batería |
+| Orange Pi Zero 3 / Zero 2 | yes | no camera connector: use a USB camera |
+| Raspberry Pi Zero 2W | yes | the easiest to fit; CSI camera connector |
+| Orange Pi 5 Pro | no | powerful, but needs a bigger torso and more battery |
 
-## Qué aprender de Microduck y Open Duck
+## What to learn from Microduck and Open Duck
 
-Ver **[LECCIONES.md](LECCIONES.md)**: reparto de masa, servos, cabeza como contrapeso y entrenamiento.
+See **[LESSONS.md](LESSONS.md)**: mass distribution, servos, head as a counterweight and training.
 
-## Componentes
+## Components
 
-Lista completa de Mini16 (servos, placa, batería, sensores, conexiones, peso y qué verificar):
-**[COMPONENTES.md](COMPONENTES.md)**. Total aproximado: ~270–330 € sin la placa.
+Full list for Mini16 (servos, board, battery, sensors, wiring, weight and what to check):
+**[COMPONENTS.md](COMPONENTS.md)**. Approximate total: ~270–330 € without the board.
 
-## Limitaciones
+## Limitations
 
-- Las ganancias de los servos son estimadas: hay que medirlas con un servo real (p. ej. con
-  [BAM](https://github.com/Rhoban/bam)) antes de pasar al robot real.
-- Las piernas no chocan entre sí en la simulación.
-- Los pies y piezas son formas simples (cajas y cápsulas), no el CAD final.
+- The servo gains are estimates: they must be measured on a real servo (e.g. with
+  [BAM](https://github.com/Rhoban/bam)) before moving to the real robot.
+- The legs do not collide with each other in the simulation.
+- The feet and parts are simple shapes (boxes and capsules), not the final CAD.

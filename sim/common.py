@@ -1,4 +1,4 @@
-"""Utilidades compartidas: cargar el modelo y simular la caminata."""
+"""Shared utilities: load the model and simulate the gait."""
 
 from pathlib import Path
 
@@ -8,7 +8,7 @@ import numpy as np
 import robots
 from gait import GaitParams, Steering, targets
 
-CONTROL_HZ = 50  # igual que el Microduck / Open Duck
+CONTROL_HZ = 50  # same as Microduck / Open Duck
 
 
 def load(robot=None):
@@ -20,13 +20,13 @@ def load(robot=None):
 
 
 def torso_tilt(data) -> float:
-    """Ángulo (rad) entre el eje vertical del torso y la vertical del mundo."""
+    """Angle (rad) between the torso's vertical axis and the world vertical."""
     up_z = data.xmat[1].reshape(3, 3)[2, 2]
     return float(np.arccos(np.clip(up_z, -1, 1)))
 
 
 def torso_pitch_roll(data):
-    """Pitch y roll del torso (rad), como los mediría la IMU."""
+    """Torso pitch and roll (rad), as the IMU would measure them."""
     R = data.xmat[1].reshape(3, 3)
     pitch = float(np.arcsin(np.clip(-R[2, 0], -1, 1)))
     roll = float(np.arctan2(R[2, 1], R[2, 2]))
@@ -43,9 +43,9 @@ def yaw(data) -> float:
 
 
 def simulate(params: GaitParams, seconds: float, on_frame=None, load_fn=None):
-    """Corre la caminata. Devuelve métricas. on_frame(model, data) se llama a 30 fps.
+    """Runs the gait. Returns metrics. on_frame(model, data) is called at 30 fps.
 
-    load_fn(robot) -> (model, data) permite cambiar el terreno o el modelo.
+    load_fn(robot) -> (model, data) allows changing the terrain or the model.
     """
     N_LEG = params.rb.n_leg
     model, data = (load_fn or load)(params.robot)
@@ -69,7 +69,7 @@ def simulate(params: GaitParams, seconds: float, on_frame=None, load_fn=None):
                 max_cmd_vel = max(max_cmd_vel, float(vel.max()))
             prev_ctrl = data.ctrl[:N_LEG].copy()
             y = yaw(data)
-            yaw_total += (y - prev_yaw + np.pi) % (2 * np.pi) - np.pi  # giro acumulado
+            yaw_total += (y - prev_yaw + np.pi) % (2 * np.pi) - np.pi  # accumulated turn
             prev_yaw = y
         mujoco.mj_step(model, data)
         max_tilt = max(max_tilt, torso_tilt(data))
@@ -90,10 +90,10 @@ def simulate(params: GaitParams, seconds: float, on_frame=None, load_fn=None):
         "fell_at": fell_at,
         "max_tilt_deg": float(np.degrees(max_tilt)),
         "max_leg_torque": max_torque,
-        # Percentil 99: torque de pierna (N·m) y error de seguimiento (grados)
+        # 99th percentile: leg torque (N·m) and tracking error (degrees)
         "p99_leg_torque": float(np.percentile(torques, 99)) if torques else 0.0,
         "p99_track_err_deg": float(np.degrees(np.percentile(errors, 99))) if errors else 0.0,
-        # Velocidad máxima pedida a un servo de pierna (rad/s); STS3215 ~4.7 rad/s sin carga
+        # Maximum speed commanded to a leg servo (rad/s); STS3215 ~4.7 rad/s with no load
         "max_cmd_vel": max_cmd_vel,
         "time": float(data.time),
     }

@@ -1,10 +1,10 @@
-"""Revisa choques entre las piezas de la pierna (mallas reales) en todo el rango de movimiento.
+"""Checks collisions between the leg parts (real meshes) over the whole range of motion.
 
-Usa los STL exportados por leg.scad (carpeta stl/). Los servos se revisan con un modelo
-encogido 0.3 mm (servo_check.stl) para no contar como choque las caras donde las piezas
-se apoyan/atornillan.
+Uses the STLs exported by leg.scad (stl/ folder). The servos are checked with a model
+shrunk by 0.3 mm (servo_check.stl) so that the faces where the parts rest/are bolted
+do not count as collisions.
 
-  python check_leg.py            # rangos libres de choque por articulación + caminata
+  python check_leg.py            # collision-free ranges per joint + gait
 """
 
 import sys
@@ -16,7 +16,7 @@ import trimesh
 HERE = Path(__file__).resolve().parent
 STL = HERE / "stl"
 
-# Medidas: las mismas de lib/params.scad
+# Dimensions: the same as in lib/params.scad
 from build_mjcf import read_params  # noqa: E402
 
 _P = read_params()
@@ -57,7 +57,7 @@ def servo_frame(o, Z, X):
 
 
 def leg_objects(q):
-    """Lista (nombre, archivo, transformación en el marco de la pierna) para la postura q (rad)."""
+    """List of (name, file, transform in the leg frame) for the pose q (rad)."""
     yaw, roll, pitch, knee, ankle, aroll = q
     out = [("servo_yaw", "servo_check", servo_frame([0, 0, S_DISC_Z], [0, 0, -1], [-1, 0, 0]))]
     L1 = rot("z", yaw)
@@ -93,7 +93,7 @@ MIRROR = np.diag([1.0, -1.0, 1.0, 1.0])
 
 
 def collisions(q_left, q_right=None):
-    """Pares que se interpenetran más de DEPTH_TOL mm. q_right en la convención de la simulación."""
+    """Pairs that interpenetrate by more than DEPTH_TOL mm. q_right in the simulation's convention."""
     cm = trimesh.collision.CollisionManager()
     for n, f, M in leg_objects(q_left):
         cm.add_object("L_" + n, mesh(f), transform=tr(0, HIP_Y, 0) @ M)
@@ -115,15 +115,15 @@ def collisions(q_left, q_right=None):
 sys.path.insert(0, str(HERE.parent / "sim"))
 from gait import GaitParams, targets  # noqa: E402
 
-STAND = targets(0.0, GaitParams(robot="mini16"))[:6]  # postura de pie de la caminata
-RANGES = {  # rango de la simulación (rad)
+STAND = targets(0.0, GaitParams(robot="mini16"))[:6]  # standing pose of the gait
+RANGES = {  # simulation range (rad)
     "hip_yaw": (0, -0.6, 0.6), "hip_roll": (1, -0.5, 0.5), "hip_pitch": (2, -1.0, 1.6),
     "knee": (3, -2.4, 0.1), "ankle": (4, -1.4, 1.4), "ankle_roll": (5, -0.5, 0.5),
 }
 
 
 def free_range(j, lo, hi, base=STAND, step=0.05):
-    """Rango continuo sin choques alrededor de la postura base, moviendo solo la articulación j."""
+    """Continuous collision-free range around the base pose, moving only joint j."""
     ok = {}
     for a in np.arange(lo, hi + 1e-9, step):
         q = base.copy()
@@ -146,15 +146,15 @@ def free_range(j, lo, hi, base=STAND, step=0.05):
 
 
 def main():
-    print("Postura de pie:", collisions(STAND, STAND) or "sin choques")
-    print("\nRango libre de choques por articulación (desde la postura de pie):")
+    print("Standing pose:", collisions(STAND, STAND) or "no collisions")
+    print("\nCollision-free range per joint (from the standing pose):")
     for name, (j, lo, hi) in RANGES.items():
         a, b, hits = free_range(j, lo, hi)
         culprits = set()
         for v in hits.values():
             culprits |= {p for k in v for p in k}
         print(f"  {name:11s} {np.degrees(a):6.0f}° .. {np.degrees(b):5.0f}°   "
-              f"(simulación {np.degrees(lo):.0f}..{np.degrees(hi):.0f}°)  piezas: {sorted(culprits)[:4]}")
+              f"(simulation {np.degrees(lo):.0f}..{np.degrees(hi):.0f}°)  parts: {sorted(culprits)[:4]}")
     if len(sys.argv) > 1 and sys.argv[1] == "--gait":
         for turn in (0.0, 0.3, -0.3):
             p = GaitParams(robot="mini16", turn=turn, steer=False)
@@ -163,7 +163,7 @@ def main():
                 q = targets(t, p)
                 for k, v in collisions(q[0:6], q[6:12]).items():
                     worst[k] = max(worst.get(k, 0), v)
-            print(f"\nCaminata (giro {turn}):", {k: round(v, 1) for k, v in worst.items()} or "sin choques")
+            print(f"\nGait (turn {turn}):", {k: round(v, 1) for k, v in worst.items()} or "no collisions")
 
 
 if __name__ == "__main__":

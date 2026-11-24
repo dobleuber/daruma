@@ -1,65 +1,65 @@
-# CAD de Mini16 (OpenSCAD)
+# Mini16 CAD (OpenSCAD)
 
-Piezas imprimibles de la pierna, diseñadas con las medidas del plano oficial del
-**Feetech STS3215** (cuerpo 45.22 x 24.72 x 32 mm, eje a 10.11 mm de un extremo, discos de
-Ø19.2 mm a ambos lados con 4 agujeros M2 en Ø14 mm, agujeros M2 de carcasa a 20.5 mm).
+Printable leg parts, designed with the dimensions from the official drawing of the
+**Feetech STS3215** (body 45.22 x 24.72 x 32 mm, axis 10.11 mm from one end, Ø19.2 mm
+discs on both sides with 4 M2 holes on a Ø14 mm circle, M2 case holes at 20.5 mm).
 
-Estado: **pierna completa** (izquierda y derecha). Falta: torso y cabeza.
+Status: **complete leg** (left and right). Missing: torso and head.
 
-## Piezas por pierna
+## Parts per leg
 
-| Pieza | Material | Relleno | Masa aprox. | Qué hace |
+| Part | Material | Infill | Approx. mass | What it does |
 |---|---|---|---|---|
-| `yaw_link` | PETG | 35 % | 7 g | atornillada al disco del servo de cadera yaw; "U" sobre el servo de cadera roll |
-| `roll_link` | PETG | 35 % | 14 g | sostiene el servo roll (acostado hacia afuera) y el pitch (acostado hacia adelante) |
-| `thigh` | PETG | 35 % | 13 g | "U" sobre el servo de cadera pitch; cuna del servo de rodilla (acostado hacia atrás) |
-| `shin` | PETG | 35 % | 13 g | "U" sobre la rodilla; cuna del servo de tobillo pitch (acostado hacia adelante) |
-| `ankle_cross` | PETG | 35 % | 13 g | "U" sobre el tobillo pitch; cuna del servo de tobillo roll (acostado hacia afuera) |
-| `foot` | PETG | 35 % | 19 g | "U" sobre el tobillo roll; plancha con alojamientos para 2 sensores de pisada |
-| `sole` | **TPU 95A** | 40 % | 8 g | suela con bordes curvos (punta, talón y costados) |
+| `yaw_link` | PETG | 35 % | 7 g | bolted to the disc of the hip yaw servo; "U" over the hip roll servo |
+| `roll_link` | PETG | 35 % | 14 g | holds the roll servo (lying outwards) and the pitch servo (lying forwards) |
+| `thigh` | PETG | 35 % | 13 g | "U" over the hip pitch servo; cradle for the knee servo (lying backwards) |
+| `shin` | PETG | 35 % | 13 g | "U" over the knee; cradle for the ankle pitch servo (lying forwards) |
+| `ankle_cross` | PETG | 35 % | 13 g | "U" over the ankle pitch; cradle for the ankle roll servo (lying outwards) |
+| `foot` | PETG | 35 % | 19 g | "U" over the ankle roll; plate with pockets for 2 foot contact sensors |
+| `sole` | **TPU 95A** | 40 % | 8 g | sole with curved edges (toe, heel and sides) |
 
-Pierna derecha: mismas piezas en espejo (`right_*.stl`). Total de plástico: ~89 g por pierna.
+Right leg: the same parts mirrored (`right_*.stl`). Total plastic: ~89 g per leg.
 
-**Impresión:** 4 perímetros (0.4 mm), capa 0.2 mm, sin soportes en lo posible (las placas
-planas hacia la cama). Holgura de ajuste `CL = 0.4 mm` en `lib/params.scad`: bajarla a 0.3 si la
-impresora es precisa.
+**Printing:** 4 perimeters (0.4 mm), 0.2 mm layers, no supports where possible (flat
+plates facing the bed). Fit clearance `CL = 0.4 mm` in `lib/params.scad`: lower it to 0.3 if the
+printer is accurate.
 
-## Distancias entre ejes (las usa la simulación)
+## Distances between axes (used by the simulation)
 
-| Tramo | mm |
+| Segment | mm |
 |---|---|
-| Disco de cadera yaw → eje roll | 25.0 |
-| Eje roll → eje pitch | 28.2 |
-| Muslo (pitch → rodilla) | 33.3 |
-| Canilla (rodilla → tobillo pitch) | 33.3 (56.1 con `SHIN_SERVO = "up"`) |
-| Tobillo pitch → tobillo roll | 33.3 |
-| Tobillo roll → suela | 34.5 |
-| Separación de cada pierna al centro | 30.0 |
+| Hip yaw disc → roll axis | 25.0 |
+| Roll axis → pitch axis | 28.2 |
+| Thigh (pitch → knee) | 33.3 |
+| Shin (knee → ankle pitch) | 33.3 (56.1 with `SHIN_SERVO = "up"`) |
+| Ankle pitch → ankle roll | 33.3 |
+| Ankle roll → sole | 34.5 |
+| Lateral offset of each leg from the center | 30.0 |
 
-Rangos sin choques (revisados con `check_leg.py`): cadera yaw ±34°, cadera roll ±29°,
-cadera pitch −14° a 74°, rodilla −83° a 6°, tobillo −11° a 80°, tobillo roll ±29°
-(con `SHIN_SERVO = "up"`: rodilla hasta −100° y tobillo ±80°, a cambio de 23 mm más de canilla).
-La caminata usada en la simulación no provoca choques entre piezas, ni entre las dos piernas.
+Collision-free ranges (checked with `check_leg.py`): hip yaw ±34°, hip roll ±29°,
+hip pitch −14° to 74°, knee −83° to 6°, ankle −11° to 80°, ankle roll ±29°
+(with `SHIN_SERVO = "up"`: knee down to −100° and ankle ±80°, at the cost of a 23 mm longer shin).
+The gait used in the simulation causes no collisions between parts, nor between the two legs.
 
-## Tornillería (por pierna)
+## Fasteners (per leg)
 
-- Discos de servo: 4x M2 por disco (2 discos por servo sujetado en "U"); tornillo central M3
-  del servo.
-- Carcasas de servo: tornillos M2 autorroscantes a los agujeros del servo.
-- Suela a pie: 4x M3 x 8 + 4 insertos M3 de latón (agujero Ø4.0, 5 mm).
-- Sensores de pisada: 2 microinterruptores con pernos Ø2 (**medir el modelo comprado** y
-  ajustar `SW_*` en `lib/params.scad`).
-- Fijador de roscas azul 243 solo en uniones metal-metal (tornillo central del disco).
+- Servo discs: 4x M2 per disc (2 discs per servo held in a "U"); the servo's central M3
+  screw.
+- Servo cases: M2 self-tapping screws into the servo holes.
+- Sole to foot: 4x M3 x 8 + 4 M3 brass inserts (Ø4.0 hole, 5 mm).
+- Foot contact sensors: 2 microswitches with Ø2 pins (**measure the model you buy** and
+  adjust `SW_*` in `lib/params.scad`).
+- Blue 243 threadlocker only on metal-to-metal joints (central disc screw).
 
-Nota: el STS3215 ya trae eje pasivo con rodamiento propio, por eso las piezas sujetan el servo
-por sus dos discos y no hace falta un rodamiento impreso.
+Note: the STS3215 already comes with a passive shaft with its own bearing, so the parts hold the servo
+by its two discs and no printed bearing is needed.
 
-## Flujo de trabajo
+## Workflow
 
 ```bash
-./export.sh            # piezas -> stl/ (izquierda, derecha y servos)
-python check_leg.py    # revisa choques en todo el rango (y --gait: con la caminata)
-python build_mjcf.py   # regenera model/mini16.xml con estas medidas, mallas y masas
+./export.sh            # parts -> stl/ (left, right and servos)
+python check_leg.py    # checks collisions over the full range (and --gait: with the gait)
+python build_mjcf.py   # regenerates model/mini16.xml with these dimensions, meshes and masses
 ```
 
-`lib/params.scad` es la única fuente de las medidas: al cambiar algo ahí, correr los tres pasos.
+`lib/params.scad` is the single source of the dimensions: after changing something there, run the three steps.

@@ -1,28 +1,28 @@
-"""Entorno de entrenamiento (Gymnasium) para Mini13 / Mini16.
+"""Training environment (Gymnasium) for Mini13 / Mini16.
 
-La IA no aprende a caminar desde cero: aprende CORRECCIONES sobre la caminata
-programada (sim/gait.py). Esto acelera mucho el entrenamiento y hace que el
-comportamiento inicial ya sea razonable.
+The RL policy does not learn to walk from scratch: it learns CORRECTIONS on top of the
+scripted gait (sim/gait.py). This speeds up training a lot and makes the
+initial behavior already reasonable.
 
-La caminata de referencia incluye el control de rumbo con la IMU (gait.Steering).
+The reference gait includes the IMU heading control (gait.Steering).
 
-Observación (todo lo puede medir el robot real):
-  - gravedad en el marco del torso (IMU)          3
-  - velocidad angular (IMU)                       3
-  - posición de los motores de pierna             N_LEG (10 en Mini13, 12 en Mini16),
-                                                  relativa a la caminata programada
-  - velocidad de los motores de pierna            N_LEG
-  - acción anterior                               N_LEG
-  - fase de la caminata (sin, cos)                2
-  - contacto de los pies                          2
-  - distancia al piso delante (sensor ToF)        N_RAYS
-Acción: correcciones en [-1, 1] -> ±ACTION_SCALE rad sobre cada motor de pierna.
-Si el robot tiene rl_head (Mini14), la IA también mueve los 4 motores de cuello y cabeza
-(±HEAD_SCALE rad alrededor de la postura neutra): la cabeza pesada es su contrapeso, como en
-el Microduck. Entonces las observaciones de motores incluyen también la cabeza.
+Observation (everything can be measured by the real robot):
+  - gravity in the torso frame (IMU)              3
+  - angular velocity (IMU)                        3
+  - leg motor positions                           N_LEG (10 on Mini13, 12 on Mini16),
+                                                  relative to the scripted gait
+  - leg motor velocities                          N_LEG
+  - previous action                               N_LEG
+  - gait phase (sin, cos)                         2
+  - foot contact                                  2
+  - distance to the floor ahead (ToF sensor)      N_RAYS
+Action: corrections in [-1, 1] -> ±ACTION_SCALE rad on each leg motor.
+If the robot has rl_head (Mini14), the RL policy also moves the 4 neck and head motors
+(±HEAD_SCALE rad around the neutral pose): the heavy head is its counterweight, as on
+Microduck. In that case the motor observations also include the head.
 
-Variación aleatoria en cada episodio (para que funcione en el robot real):
-fricción, peso extra, rigidez de los servos, retardo de control y empujones.
+Random variation in each episode (so that it works on the real robot):
+friction, extra mass, servo stiffness, control delay and pushes.
 """
 
 import sys
@@ -43,12 +43,12 @@ CONTROL_HZ = 50
 ACTION_SCALE = 0.3  # rad
 HEAD_SCALE = 0.6  # rad
 N_RAYS = 6
-RAY_X = np.linspace(0.04, 0.14, N_RAYS)  # m delante del torso
-START_X = 0.12  # distancia al obstáculo
-TERRAIN_GROUP = 2  # grupo de geometrías del terreno (el sensor solo ve este grupo)
+RAY_X = np.linspace(0.04, 0.14, N_RAYS)  # m ahead of the torso
+START_X = 0.12  # distance to the obstacle
+TERRAIN_GROUP = 2  # geom group of the terrain (the sensor only sees this group)
 _RAY_GROUPS = np.array([0, 0, 1, 0, 0, 0], np.uint8)
 
-# Terrenos: (tipo, valor). Rampas en grados, escalones en metros.
+# Terrains: (kind, value). Ramps in degrees, steps in meters.
 TERRAINS = {
     "flat": [("flat", 0)],
     "ramps": [("ramp", a) for a in (5, 10, 15, 20)],
@@ -80,7 +80,7 @@ def build_model(kind, value, robot=None):
         top, x_end = 2 * L * np.sin(th), START_X + 2 * L * np.cos(th)
         _box(spec, "ramp_top", [x_end + 0.5, 0, top / 2], [0.5, 0.4, top / 2])
     elif kind == "step":
-        # Tres escalones seguidos, separados 25 cm.
+        # Three steps in a row, 25 cm apart.
         for i in range(3):
             _box(spec, f"step{i}", [START_X + 0.25 * i + 0.5, 0, (i + 1) * value / 2], [0.5 - 0.0, 0.4, (i + 1) * value / 2])
     return spec.compile()
@@ -94,7 +94,7 @@ class MiniEnv(gym.Env):
         super().__init__()
         self.rb = robots.get(robot)
         self.n_leg = self.rb.n_leg
-        self.n_ctrl = self.rb.n_act if self.rb.rl_head else self.n_leg  # motores que mueve la IA
+        self.n_ctrl = self.rb.n_act if self.rb.rl_head else self.n_leg  # motors moved by the RL policy
         self.terrain_list = TERRAINS[terrain] if isinstance(terrain, str) else list(terrain)
         self.models = {t: build_model(*t, self.rb) for t in self.terrain_list}
         m0 = next(iter(self.models.values()))
@@ -134,16 +134,16 @@ class MiniEnv(gym.Env):
         fr = r.uniform(0.5, 1.3)
         for g in self.soles:
             m.geom_friction[g, 0] = fr
-        # Peso extra en el torso: hasta 15 % del robot (150 g en Mini16, ~95 g en Mini14)
+        # Extra mass on the torso: up to 15 % of the robot (150 g on Mini16, ~95 g on Mini14)
         m.body_mass[self.torso] = self.base_torso_mass + r.uniform(0, 0.13 * self.total_mass)
-        # Rigidez de los servos: ±30 % de la del modelo (voltaje de batería, servos distintos)
+        # Servo stiffness: ±30 % of the model's (battery voltage, different servos)
         kp = self.base_kp * r.uniform(0.7, 1.3)
         m.actuator_gainprm[: self.n_ctrl, 0] = kp
         m.actuator_biasprm[: self.n_ctrl, 1] = -kp
-        self.delay = int(r.integers(0, 2))  # 0 o 1 paso de control (0-20 ms)
+        self.delay = int(r.integers(0, 2))  # 0 or 1 control step (0-20 ms)
 
     def _rays(self):
-        """Distancia vertical del torso al piso en puntos delante (como un sensor ToF)."""
+        """Vertical distance from the torso to the floor at points ahead (like a ToF sensor)."""
         d, m = self.d, self.m
         R = d.xmat[self.torso].reshape(3, 3)
         fwd = R[:, 0].copy()
@@ -157,7 +157,7 @@ class MiniEnv(gym.Env):
             dist = mujoco.mj_ray(m, d, p, np.array([0, 0, -1.0]), _RAY_GROUPS, 1, -1, geomid)
             if dist < 0:
                 dist = 0.3
-            out[i] = dist - 0.1  # altura del torso sobre el piso en ese punto
+            out[i] = dist - 0.1  # height of the torso above the floor at that point
         return out
 
     def _obs(self):
@@ -183,7 +183,7 @@ class MiniEnv(gym.Env):
         return 0.0
 
     def _reference(self, full):
-        """Postura de referencia de los motores que mueve la IA (cabeza: neutra)."""
+        """Reference pose of the motors moved by the RL policy (head: neutral)."""
         ref = np.zeros(self.n_ctrl)
         ref[: self.n_leg] = full[: self.n_leg]
         return ref
@@ -209,7 +209,7 @@ class MiniEnv(gym.Env):
         self.ref_q = self._reference(targets(0.0, self.gait))
         self.push_at = self.rng.uniform(2, 6) if self.push else 1e9
         self.start_x = self.d.qpos[0]
-        # La caminata de referencia mantiene el rumbo con la IMU (igual que en el robot real).
+        # The reference gait holds the heading with the IMU (same as on the real robot).
         self.steering = Steering(self.gait)
         self.yaw_total, self.prev_yaw = 0.0, yaw(self.d)
         return self._obs(), {"terrain": key}
@@ -224,7 +224,7 @@ class MiniEnv(gym.Env):
         full = targets(d.time, self.steering.update(self.yaw_total, 1 / CONTROL_HZ), pitch, roll)
         self.ref_q = self._reference(full)
         cmd = np.clip(self.ref_q + self.scale * action, self.lo, self.hi)
-        # Límite de velocidad del servo real
+        # Speed limit of the real servo
         prev_cmd = d.ctrl[: self.n_ctrl].copy()
         max_delta = self.rb.servo_speed / CONTROL_HZ
         cmd = np.clip(cmd, prev_cmd - max_delta, prev_cmd + max_delta)
@@ -269,10 +269,10 @@ class MiniEnv(gym.Env):
             self._cam = mujoco.MjvCamera()
             self._cam.distance, self._cam.azimuth, self._cam.elevation = 0.6, 105, -10
             self._vopt = mujoco.MjvOption()
-            self._vopt.flags[mujoco.mjtVisFlag.mjVIS_RANGEFINDER] = 0  # sin la línea del ToF
+            self._vopt.flags[mujoco.mjtVisFlag.mjVIS_RANGEFINDER] = 0  # without the ToF line
         self._cam.lookat[:] = [self.d.qpos[0], self.d.qpos[1], self.d.qpos[2] + 0.01]
         self._renderer.update_scene(self.d, camera=self._cam, scene_option=self._vopt)
         return self._renderer.render()
 
 
-Mini16Env = MiniEnv  # compatibilidad
+Mini16Env = MiniEnv  # backwards compatibility

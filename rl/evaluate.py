@@ -1,12 +1,12 @@
-"""Compara la caminata programada contra la política entrenada en cada terreno.
+"""Compares the scripted gait against the trained policy on each terrain.
 
-Uso:
-  python evaluate.py --policy runs/mix/policy.zip                  # tabla de resultados
-  python evaluate.py --policy runs/mix/policy.zip --video out_dir  # + videos lado a lado
-  python evaluate.py --policy mini16_policy.onnx                   # también acepta ONNX
+Usage:
+  python evaluate.py --policy runs/mix/policy.zip                  # results table
+  python evaluate.py --policy runs/mix/policy.zip --video out_dir  # + side-by-side videos
+  python evaluate.py --policy mini16_policy.onnx                   # also accepts ONNX
 
-Éxito = no se cae y avanza al menos 30 cm (en escalones: sube al menos el primero).
-Cada terreno se prueba con varias semillas, con fricción/peso/servos aleatorios y empujones.
+Success = does not fall and moves forward at least 30 cm (on steps: climbs at least the first one).
+Each terrain is tested with several seeds, with random friction/mass/servos and pushes.
 """
 
 import argparse
@@ -19,11 +19,11 @@ from env import TERRAINS, MiniEnv
 SUCCESS_PROGRESS = 0.3
 
 
-ROBOT = None  # se fija con --robot
+ROBOT = None  # set with --robot
 
 
 def n_leg():
-    """Cantidad de motores que mueve la IA (piernas, y cabeza si el robot tiene rl_head)."""
+    """Number of motors moved by the RL policy (legs, plus head if the robot has rl_head)."""
     import robots
 
     rb = robots.get(ROBOT)
@@ -32,7 +32,7 @@ def n_leg():
 
 def load_policy(path):
     if path is None:
-        return lambda obs: np.zeros(n_leg(), np.float32)  # caminata programada sola
+        return lambda obs: np.zeros(n_leg(), np.float32)  # scripted gait alone
     if str(path).endswith(".onnx"):
         import onnxruntime as ort
 
@@ -57,7 +57,7 @@ def run_episode(policy, terrain, seed, frames=None, seconds=10.0):
             fell = True
             if frames is None:
                 break
-            # sigue grabando un poco para mostrar la caída
+            # keep recording a little to show the fall
             for _ in range(25):
                 env.step(np.zeros(env.n_ctrl))
                 frames.append(env.render())
@@ -77,7 +77,7 @@ def evaluate(policy, terrains, seeds):
 
 def label(t):
     kind, v = t
-    return {"flat": "Plano", "ramp": f"Rampa {v}°", "step": f"Escalones {v * 100:g} cm"}[kind]
+    return {"flat": "Flat", "ramp": f"Ramp {v}°", "step": f"Steps {v * 100:g} cm"}[kind]
 
 
 def side_by_side_video(policies, names, terrain, path, seed=0):
@@ -102,8 +102,8 @@ def side_by_side_video(policies, names, terrain, path, seed=0):
             dr.text((j * W + 10, 52), names[j], fill=(230, 230, 230), font=font(22))
             if i >= len(c) - 1 or i > n - 40:
                 o = outs[j]
-                txt, col = (("se cayó", (230, 80, 80)) if o["fell"] else
-                            (("lo logró", (90, 200, 90)) if o["ok"] else ("trabado", (240, 170, 60))))
+                txt, col = (("fell", (230, 80, 80)) if o["fell"] else
+                            (("made it", (90, 200, 90)) if o["ok"] else ("stuck", (240, 170, 60))))
                 dr.text((j * W + 330, 52), txt, fill=col, font=font(22))
         video.append(np.array(im))
     iio.mimsave(path, video, fps=25, macro_block_size=1)
@@ -112,11 +112,11 @@ def side_by_side_video(policies, names, terrain, path, seed=0):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--policy", help="policy.zip o .onnx (sin esto: solo la caminata programada)")
-    ap.add_argument("--robot", default=None, help="mini16 (por defecto), mini13 o mini14")
-    ap.add_argument("--terrain", default="mix", choices=list(TERRAINS), help="terrenos a evaluar")
+    ap.add_argument("--policy", help="policy.zip or .onnx (without it: only the scripted gait)")
+    ap.add_argument("--robot", default=None, help="mini16 (default), mini13 or mini14")
+    ap.add_argument("--terrain", default="mix", choices=list(TERRAINS), help="terrains to evaluate")
     ap.add_argument("--seeds", type=int, default=5)
-    ap.add_argument("--video", help="carpeta para guardar videos comparativos")
+    ap.add_argument("--video", help="folder to save comparison videos to")
     args = ap.parse_args()
     global ROBOT
     ROBOT = args.robot
@@ -127,7 +127,7 @@ def main():
     pol = load_policy(args.policy) if args.policy else None
     trained = evaluate(pol, terrains, seeds) if pol else None
 
-    print(f"{'Terreno':<18}{'Programada':>22}{'Con IA':>22}")
+    print(f"{'Terrain':<18}{'Scripted':>22}{'With RL':>22}")
     for t in terrains:
         b = f"{base[t][0] * 100:3.0f}% ({base[t][1] * 100:4.0f} cm)"
         r = f"{trained[t][0] * 100:3.0f}% ({trained[t][1] * 100:4.0f} cm)" if trained else "-"
@@ -139,7 +139,7 @@ def main():
         vids = [("ramp", 15), ("ramp", 20), ("step", 0.01), ("step", 0.015)]
         for t in [v for v in vids if v in terrains] or terrains:
             name = f"{t[0]}_{t[1]}".replace(".", "_")
-            side_by_side_video([load_policy(None), pol], ["Caminata programada", "Con IA"], t,
+            side_by_side_video([load_policy(None), pol], ["Scripted gait", "With RL"], t,
                                str(out / f"{name}.mp4"))
             print("video:", out / f"{name}.mp4")
 

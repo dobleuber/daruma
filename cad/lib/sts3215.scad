@@ -1,8 +1,8 @@
-// Feetech STS3215 y utilidades de montaje.
-// Marco del servo: origen en el eje, sobre el plano medio de la carcasa.
-//   Z = eje (disco de salida en +Z, disco pasivo en -Z)
-//   X = a lo largo del cuerpo (extremo corto en -X, largo en +X)
-//   Y = ancho
+// Feetech STS3215 and mounting utilities.
+// Servo frame: origin on the axis, on the mid-plane of the case.
+//   Z = axis (output disc at +Z, passive disc at -Z)
+//   X = along the body (short end at -X, long end at +X)
+//   Y = width
 include <params.scad>
 
 module sts3215() {
@@ -12,24 +12,24 @@ module sts3215() {
         translate([0, 0, S_CASE / 2]) cylinder(d = S_DISC_D, h = S_DISC_Z - S_CASE / 2);
         translate([0, 0, -S_DISC_Z]) cylinder(d = S_DISC_D, h = S_DISC_Z - S_CASE / 2);
     }
-    // conector del bus (lado largo)
+    // bus connector (long side)
     color([0.9, 0.9, 0.9]) translate([S_LONG - 9, -6, S_CASE / 2]) cube([8, 12, 1.5]);
 }
 
-// Agujeros del disco (4x M2 + central), a lo largo de Z, centrados en el origen.
+// Disc holes (4x M2 + central), along Z, centered on the origin.
 module horn_holes(h = 20) {
     for (a = [0, 90, 180, 270]) rotate([0, 0, a]) translate([S_HORN_R, 0, 0])
         cylinder(d = M2_HOLE, h = h, center = true, $fn = 16);
     cylinder(d = HORN_CENTER, h = h, center = true, $fn = 24);
 }
 
-// Agujeros M2 de la carcasa en el plano XY del servo (perforan a lo largo de Z).
+// M2 case holes in the servo's XY plane (drilled along Z).
 module case_holes(h = 60) {
     for (x = S_CASE_HOLES_X) for (y = [-S_CASE_HOLE_Y, S_CASE_HOLE_Y])
         translate([x, y, 0]) cylinder(d = M2_HOLE, h = h, center = true, $fn = 16);
 }
 
-// Coloca los hijos en el marco de un servo dado su eje Z y su dirección X (en el marco padre).
+// Places the children in the frame of a servo given its Z axis and its X direction (in the parent frame).
 function _cross(a, b) = [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 module servo_frame(origin, Z, X) {
     Y = _cross(Z, X);

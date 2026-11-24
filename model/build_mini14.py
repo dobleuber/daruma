@@ -1,13 +1,13 @@
-"""Genera model/mini14.xml: bípedo de 14 servos XL330 diseñado con lo aprendido del Microduck.
+"""Generates model/mini14.xml: a 14-servo XL330 biped designed with what we learned from Microduck.
 
-Ideas de diseño (ver LECCIONES.md):
-  - Servos chicos (Dynamixel XL330-M288-T, 18 g) alimentados directo con 2S (7.4 V).
-  - 5 por pierna, sin tobillo roll. Piernas cortas: cadera a ~10 cm del piso.
-  - Cabeza pesada y móvil (4 servos) con la batería adentro: sirve de contrapeso.
-  - Servos modelados con los parámetros identificados por BAM para el XL330 (Rhoban/bam).
+Design ideas (see LESSONS.md):
+  - Small servos (Dynamixel XL330-M288-T, 18 g) powered directly from 2S (7.4 V).
+  - 5 per leg, no ankle roll. Short legs: hip ~10 cm above the floor.
+  - Heavy, movable head (4 servos) with the battery inside: it acts as a counterweight.
+  - Servos modeled with the parameters identified by BAM for the XL330 (Rhoban/bam).
 
-Correr:  python build_mini14.py   (escribe mini14.xml junto a este archivo)
-Todas las medidas están en P: cambiar ahí y volver a correr.
+Run:  python build_mini14.py   (writes mini14.xml next to this file)
+All dimensions are in P: change them there and run it again.
 """
 
 from pathlib import Path
@@ -15,35 +15,35 @@ from pathlib import Path
 import numpy as np
 
 # ------------------------------------------------------------------------------------------
-# Medidas (m, kg)
+# Dimensions (m, kg)
 # ------------------------------------------------------------------------------------------
 P = dict(
-    # Servo XL330-M288-T: 20 x 34 x 26 mm (el eje atraviesa los 26 mm), 18 g.
-    # El eje está a 10 mm de un extremo del lado de 34 mm.
+    # XL330-M288-T servo: 20 x 34 x 26 mm (the shaft runs through the 26 mm side), 18 g.
+    # The shaft is 10 mm from one end of the 34 mm side.
     servo=(0.034, 0.020, 0.026),
     servo_axis_from_end=0.010,
     servo_mass=0.018,
-    # Pierna (distancias entre ejes)
-    hip_y=0.036,  # separación de cada pierna al centro
-    yaw_to_roll=0.016,  # disco de cadera yaw -> eje roll
-    roll_to_pitch=0.024,  # eje roll -> eje pitch
-    thigh=0.045,  # cadera pitch -> rodilla
-    shin=0.045,  # rodilla -> tobillo
-    ankle_to_sole=0.022,  # tobillo -> suela
-    foot=(0.080, 0.042),  # largo, ancho
-    foot_x=0.008,  # la punta sobresale más que el talón
-    # Altura de pie (cadera pitch sobre la suela)
+    # Leg (distances between axes)
+    hip_y=0.036,  # lateral offset of each leg from the center
+    yaw_to_roll=0.016,  # hip yaw disc -> roll axis
+    roll_to_pitch=0.024,  # roll axis -> pitch axis
+    thigh=0.045,  # hip pitch -> knee
+    shin=0.045,  # knee -> ankle
+    ankle_to_sole=0.022,  # ankle -> sole
+    foot=(0.080, 0.042),  # length, width
+    foot_x=0.008,  # the toe sticks out more than the heel
+    # Standing height (hip pitch above the sole)
     stand_hip=0.100,
-    # Cuello y cabeza
-    neck_pitch=(0.016, 0.075),  # (x, z) del eje de cuello pitch respecto del torso
-    neck=0.030,  # cuello pitch -> cabeza pitch
-    head=(0.070, 0.074, 0.044),  # caja de la cabeza (x, y, z)
-    # Masas de componentes (kg)
-    battery=0.104,  # 2x 18650 + soporte + BMS 2S, en la cabeza
+    # Neck and head
+    neck_pitch=(0.016, 0.075),  # (x, z) of the neck pitch axis relative to the torso
+    neck=0.030,  # neck pitch -> head pitch
+    head=(0.070, 0.074, 0.044),  # head box (x, y, z)
+    # Component masses (kg)
+    battery=0.104,  # 2x 18650 + holder + 2S BMS, in the head
     head_shell=0.030,
-    head_sensors=0.008,  # cámara USB + ToF
+    head_sensors=0.008,  # USB camera + ToF
     trunk_shell=0.045,
-    trunk_electronics=0.070,  # Orange Pi Zero 3, interfaz de bus, UBEC 5 V, IMU, cables
+    trunk_electronics=0.070,  # Orange Pi Zero 3, bus interface, 5 V UBEC, IMU, cables
     neck_link=0.008,
     yaw_link=0.006,
     roll_link=0.008,
@@ -53,9 +53,9 @@ P = dict(
     sole=0.006,  # TPU
 )
 
-# XL330 a 7.4 V con parámetros BAM (params/xl330/m6.json, export a MuJoCo de bam.to_mujoco):
-#   forcerange = vin*kt/R, damping = viscosa + kt^2/R, kp = 0.002877 * kp_fw * vin * kt / R
-KP_FW = 400  # ganancia P del firmware (400 = valor de fábrica; el Microduck usa 200)
+# XL330 at 7.4 V with BAM parameters (params/xl330/m6.json, MuJoCo export from bam.to_mujoco):
+#   forcerange = vin*kt/R, damping = viscous + kt^2/R, kp = 0.002877 * kp_fw * vin * kt / R
+KP_FW = 400  # firmware P gain (400 = factory value; Microduck uses 200)
 VIN, KT, R = 7.4, 0.346, 2.50
 XL330 = dict(
     kp=0.002877 * KP_FW * VIN * KT / R,
@@ -71,7 +71,7 @@ def f(*v):
 
 
 def servo_geom(name, center, axis, along, stator_body_note=""):
-    """Caja de un servo. axis = eje de giro ('x','y','z'); along = eje del lado de 34 mm."""
+    """Box of a servo. axis = rotation axis ('x','y','z'); along = axis of the 34 mm side."""
     L, W, H = P["servo"]
     size = {"x": 0, "y": 0, "z": 0}
     size[axis] = H / 2
@@ -88,7 +88,7 @@ def leg(side):
     s = 1 if side == "left" else -1
     p = P
     L = p["servo"][0]
-    off = L / 2 - p["servo_axis_from_end"]  # del eje al centro del servo, a lo largo de los 34 mm
+    off = L / 2 - p["servo_axis_from_end"]  # from the shaft to the servo center, along the 34 mm side
     yaw_z = p["roll_to_pitch"] + p["yaw_to_roll"]
     fl, fw = p["foot"]
     sole_t = 0.006
@@ -142,7 +142,7 @@ def head():
     hx, hy, hz = p["head"]
     L = p["servo"][0]
     off = L / 2 - p["servo_axis_from_end"]
-    # Ejes: cuello pitch (torso) -> cabeza pitch (cuello) -> cabeza yaw -> cabeza roll (en la cabeza).
+    # Axes: neck pitch (torso) -> head pitch (neck) -> head yaw -> head roll (in the head).
     return f"""
       {servo_geom("neck_pitch_servo", (nx - off, 0, nz), "y", "x")}
       <body name="neck" pos="{nx:.4f} 0 {nz:.4f}">
@@ -162,7 +162,7 @@ def head():
               <joint name="head_roll" axis="1 0 0" range="-0.45 0.45"/>
               <geom name="head" type="box" pos="0.012 0 {hz / 2 - 0.012:.4f}" size="{hx / 2:.4f} {hy / 2:.4f} {hz / 2:.4f}"
                     mass="{p['head_shell']}" class="shell"/>
-              <!-- Batería 2x18650 acostada a lo ancho, atrás en la cabeza -->
+              <!-- 2x18650 battery lying sideways, at the back of the head -->
               <geom name="battery" type="box" pos="-0.006 0 {hz / 2 - 0.012:.4f}" size="0.019 0.034 0.0095"
                     mass="{p['battery']}" rgba="0.2 0.3 0.6 1" contype="0" conaffinity="0" group="3"/>
               <geom name="sensors" type="box" pos="{0.012 + hx / 2 - 0.004:.4f} 0 {hz / 2 - 0.012:.4f}"
@@ -174,7 +174,7 @@ def head():
                     contype="0" conaffinity="0" density="0" rgba="0.05 0.05 0.05 1"/>
               <camera name="eye" pos="{0.012 + hx / 2 + 0.004:.4f} 0 {hz / 2 - 0.006:.4f}" xyaxes="0 -1 0 0 0 1" fovy="70"/>
               <site name="camera" pos="{0.012 + hx / 2 + 0.004:.4f} 0 {hz / 2 - 0.006:.4f}" size="0.003"/>
-              <!-- ToF 8x8 bajo la cámara, mirando 45° al piso -->
+              <!-- 8x8 ToF below the camera, looking 45° down at the floor -->
               <site name="tof" pos="{0.012 + hx / 2 + 0.002:.4f} 0 {hz / 2 - 0.026:.4f}" size="0.003"
                     zaxis="0.7071 0 -0.7071"/>
             </body>
@@ -208,15 +208,15 @@ def build():
     joints += ["neck_pitch", "head_pitch", "head_yaw", "head_roll"]
 
     xml = f"""<!--
-  Mini14: GENERADO por build_mini14.py (no editar a mano).
+  Mini14: GENERATED by build_mini14.py (do not edit by hand).
 
-  14 servos Dynamixel XL330-M288-T a 7.4 V (2S):
-    Cada pierna (5): cadera yaw, cadera roll, cadera pitch, rodilla, tobillo pitch
-    Cuello/cabeza (4): cuello pitch, cabeza pitch, cabeza yaw, cabeza roll
-  La batería (2x18650) va en la cabeza: es el contrapeso, como la cabeza del Microduck.
+  14 Dynamixel XL330-M288-T servos at 7.4 V (2S):
+    Each leg (5): hip yaw, hip roll, hip pitch, knee, ankle pitch
+    Neck/head (4): neck pitch, head pitch, head yaw, head roll
+  The battery (2x18650) goes in the head: it is the counterweight, like Microduck's head.
 
-  Ejes: x = adelante, y = izquierda, z = arriba. Origen del torso = altura de cadera pitch.
-  Servos: parámetros BAM del XL330 (kp de firmware {KP_FW}).
+  Axes: x = forward, y = left, z = up. Torso origin = hip pitch height.
+  Servos: BAM parameters of the XL330 (firmware kp {KP_FW}).
 -->
 <mujoco model="mini14">
   <compiler angle="radian" autolimits="true"/>
@@ -250,7 +250,7 @@ def build():
       <site name="imu" pos="0 0 {yaw_z + 0.03:.4f}" size="0.005"/>
       <geom name="torso" class="shell" pos="-0.002 0 {yaw_z + 0.032:.4f}" size="0.036 0.048 0.036"
             mass="{p['trunk_shell']}"/>
-      <!-- Orange Pi Zero 3 vertical contra la espalda; UBEC, interfaz de bus e IMU -->
+      <!-- Orange Pi Zero 3 upright against the back; UBEC, bus interface and IMU -->
       <geom name="electronics" type="box" pos="-0.028 0 {yaw_z + 0.035:.4f}" size="0.006 0.027 0.025"
             mass="{p['trunk_electronics']}" rgba="0.1 0.5 0.2 1" contype="0" conaffinity="0" group="3"/>
       {servo_geom("left_hip_yaw_servo", (-off, p['hip_y'], yaw_z + 0.013), "z", "x")}
@@ -287,7 +287,7 @@ def build():
     out.write_text(xml)
     scene = (Path(__file__).resolve().parent / "scene_mini13.xml").read_text()
     (out.parent / "scene_mini14.xml").write_text(scene.replace("mini13", "mini14"))
-    print(f"Escrito {out}")
+    print(f"Wrote {out}")
 
 
 if __name__ == "__main__":

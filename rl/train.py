@@ -1,12 +1,12 @@
-"""Entrena a Mini13 / Mini16 con PPO (Stable-Baselines3) en terrenos variados.
+"""Trains Mini13 / Mini16 with PPO (Stable-Baselines3) on varied terrains.
 
-Uso:
-  python train.py --steps 5000000 --envs 4            # entrenamiento local en CPU (Mini13)
-  python train.py --robot mini16 --out runs/mini16     # el de 16 motores
-  python train.py --steps 200000 --envs 2 --out runs/prueba   # prueba rápida
+Usage:
+  python train.py --steps 5000000 --envs 4            # local training on CPU (Mini13)
+  python train.py --robot mini16 --out runs/mini16     # the 16-motor one
+  python train.py --steps 200000 --envs 2 --out runs/test   # quick test
 
-Guarda en --out: modelo final (policy.zip), checkpoints y un log CSV con el progreso.
-En una PC con más núcleos, subir --envs acelera casi en proporción.
+Saves in --out: final model (policy.zip), checkpoints and a CSV log with the progress.
+On a PC with more cores, raising --envs speeds it up almost proportionally.
 """
 
 import argparse
@@ -21,7 +21,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor
 
-from env import MiniEnv  # noqa: I001 (env añade sim/ al path)
+from env import MiniEnv  # noqa: I001 (env adds sim/ to the path)
 import robots  # noqa: E402
 
 
@@ -34,7 +34,7 @@ def make_env(terrain, seed, robot):
 
 
 class ProgressLog(BaseCallback):
-    """Escribe recompensa media y avance medio por terreno cada rollout."""
+    """Writes the mean reward and mean forward progress per terrain every rollout."""
 
     def __init__(self, path):
         super().__init__()
@@ -57,7 +57,7 @@ class ProgressLog(BaseCallback):
         row = {"steps": self.num_timesteps, "minutes": round((time.time() - self.t0) / 60, 1),
                "reward": round(rew, 1), "ep_len": round(length)}
         for k, v in sorted(self.per_terrain.items()):
-            row[f"avance_{k}"] = round(float(np.mean(v[-20:])), 3)
+            row[f"progress_{k}"] = round(float(np.mean(v[-20:])), 3)
         new = not os.path.exists(self.path)
         with open(self.path, "a", newline="") as f:
             w = csv.DictWriter(f, fieldnames=list(row.keys()), extrasaction="ignore")
@@ -73,9 +73,9 @@ def main():
     ap.add_argument("--steps", type=int, default=5_000_000)
     ap.add_argument("--envs", type=int, default=4)
     ap.add_argument("--terrain", default="mix", choices=["flat", "ramps", "steps", "mix"])
-    ap.add_argument("--robot", default=None, help="mini16 (por defecto) o mini13")
+    ap.add_argument("--robot", default=None, help="mini16 (default) or mini13")
     ap.add_argument("--out", default="runs/mix")
-    ap.add_argument("--resume", help="policy.zip para continuar entrenando")
+    ap.add_argument("--resume", help="policy.zip to continue training from")
     args = ap.parse_args()
 
     out = Path(args.out)
@@ -97,7 +97,7 @@ def main():
             clip_range=0.2,
             ent_coef=0.0,
             max_grad_norm=0.5,
-            # Política chica: corre fácil en una Raspberry Pi Zero 2W.
+            # Small policy: runs easily on a Raspberry Pi Zero 2W.
             policy_kwargs=dict(net_arch=dict(pi=[128, 128], vf=[128, 128]), log_std_init=robots.get(args.robot).rl_log_std,
                                activation_fn=torch.nn.ELU),
             device="cpu",
@@ -108,7 +108,7 @@ def main():
                  CheckpointCallback(save_freq=max(1, 500_000 // args.envs), save_path=str(out / "checkpoints"))]
     model.learn(total_timesteps=args.steps, callback=callbacks, reset_num_timesteps=not args.resume)
     model.save(out / "policy.zip")
-    print("Guardado en", out / "policy.zip")
+    print("Saved to", out / "policy.zip")
 
 
 if __name__ == "__main__":

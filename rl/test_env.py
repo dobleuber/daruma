@@ -1,4 +1,4 @@
-"""Pruebas del entorno de entrenamiento. Correr con: python -m pytest -q"""
+"""Tests of the training environment. Run with: python -m pytest -q"""
 
 import numpy as np
 import pytest
@@ -19,9 +19,9 @@ def test_spaces_and_observation(env):
 
 
 def test_zero_action_stands_on_flat(env):
-    """Con acción cero es la caminata programada: con fricción, peso y servos aleatorios no debe
-    caerse en 5 s. (No se exige avance: con las variaciones, la caminata programada de Mini16
-    real casi no avanza; mejorar eso es el trabajo de la IA.)"""
+    """With zero action it is the scripted gait: with random friction, mass and servos it must not
+    fall within 5 s. (Forward progress is not required: with the variations, the scripted gait of the
+    real Mini16 barely moves forward; improving that is the RL policy's job.)"""
     env.reset(seed=2, options={"terrain": ("flat", 0)})
     for _ in range(250):
         obs, r, term, trunc, info = env.step(np.zeros(env.n_ctrl))
@@ -31,7 +31,7 @@ def test_zero_action_stands_on_flat(env):
 def test_distance_sensor_sees_step(env):
     obs, _ = env.reset(seed=3, options={"terrain": ("step", 0.02)})
     rays = obs[-N_RAYS:]
-    # Los primeros rayos ven el piso; los últimos, el escalón (más cerca del torso).
+    # The first rays see the floor; the last ones, the step (closer to the torso).
     assert rays[0] > rays[-1] + 0.2
 
 
